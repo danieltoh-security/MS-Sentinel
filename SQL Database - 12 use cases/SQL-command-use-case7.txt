@@ -1,0 +1,53 @@
+/*
+Microsoft Sentinel use case 7 test:
+Mass Select of Records - SELECT returning more than 5,100 records,
+excluding approved database accounts
+
+This test is non-destructive. It returns exactly 5,101 generated rows from a
+cross join of SQL Server system catalog views and does not create or modify
+database objects or data.
+
+Before testing:
+1. Replace REPLACE_WITH_NON_PRODUCTION_DATABASE with a non-production
+   database.
+2. Replace the ApprovedDatabaseAccounts placeholders in the analytics rule.
+3. Enable the imported analytics rule.
+4. Run the script using a SQL account that is NOT listed in
+   ApprovedDatabaseAccounts.
+5. Ensure SQL Server Audit captures SELECT activity and includes the
+   response_rows and statement fields in MSSQLSERVER event 33205.
+6. Ensure event 33205 is ingested into the SecurityEvent table in
+   FY25-Sentinel-Central-workspace.
+7. Allow the SQL client to retrieve the complete result set. Do not cancel the
+   query or stop result rendering before all 5,101 rows have been returned.
+
+Expected result:
+- The SELECT returns exactly 5,101 rows.
+- SQL Audit records response_rows = 5101.
+- The analytics rule generates an alert after event ingestion and evaluation.
+*/
+
+USE [REPLACE_WITH_NON_PRODUCTION_DATABASE];
+GO
+
+SET NOCOUNT ON;
+GO
+
+/*
+Keep this SELECT in its own batch so SQL Server Audit can associate the
+completed statement or batch with response_rows = 5101.
+*/
+SELECT TOP (5101)
+    ROW_NUMBER() OVER
+    (
+        ORDER BY
+            a.object_id,
+            b.object_id
+    ) AS SentinelUseCase7RowNumber,
+    N'Sentinel use case 7 - mass select test' AS SentinelTestMarker
+FROM sys.all_objects AS a
+CROSS JOIN sys.all_objects AS b
+ORDER BY
+    a.object_id,
+    b.object_id;
+GO

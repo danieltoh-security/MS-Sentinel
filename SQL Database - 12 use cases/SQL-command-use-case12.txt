@@ -1,0 +1,37 @@
+/*
+Microsoft Sentinel use case 12 test: SQL user account deletion
+
+Prerequisites:
+- Replace YourTestDatabase with a non-production database name.
+- Run with an account permitted to CREATE USER and DROP USER.
+- SQL Server Audit must capture DATABASE_PRINCIPAL_CHANGE_GROUP and write
+  event 33205 to the Windows Security event log.
+
+The transaction is rolled back so the test user is not retained.
+The DROP USER statement should still be recorded by SQL Server Audit.
+*/
+
+USE [YourTestDatabase];
+GO
+
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+    IF USER_ID(N'SentinelUseCase12TestUser') IS NOT NULL
+        THROW 50001, 'SentinelUseCase12TestUser already exists. Test stopped to avoid modifying an existing user.', 1;
+
+    CREATE USER [SentinelUseCase12TestUser] WITHOUT LOGIN;
+
+    DROP USER [SentinelUseCase12TestUser];
+
+    ROLLBACK TRANSACTION;
+
+    PRINT 'DROP USER test completed and rolled back successfully.';
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0
+        ROLLBACK TRANSACTION;
+
+    THROW;
+END CATCH;
+GO

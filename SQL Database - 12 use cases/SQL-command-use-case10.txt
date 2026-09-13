@@ -1,0 +1,91 @@
+/*
+Microsoft Sentinel use case 10 test:
+Unauthorized DB User Access - login outside the approved DB-user whitelist
+
+Before testing:
+1. Replace YourTestDatabase with a non-production database.
+2. Replace REPLACE_WITH_STRONG_TEMP_PASSWORD with a unique temporary password.
+3. Ensure SentinelUseCase10TestLogin is NOT in ApprovedDatabaseUsers.
+4. Enable the imported analytics rule.
+5. Ensure successful SQL logins are audited as MSSQLSERVER event 18454 and
+   ingested into the SecurityEvent table.
+
+IMPORTANT:
+EXECUTE AS LOGIN does not create a new login event. Complete Step 2 from a
+separate SQL connection authenticated as SentinelUseCase10TestLogin.
+*/
+
+/* Step 1: Run as an administrator to create the temporary test login. */
+USE [master];
+GO
+
+IF SUSER_ID(N'SentinelUseCase10TestLogin') IS NOT NULL
+    THROW 50010, 'SentinelUseCase10TestLogin already exists. Test stopped to avoid modifying an existing login.', 1;
+GO
+
+CREATE LOGIN [SentinelUseCase10TestLogin]
+WITH PASSWORD = N'REPLACE_WITH_STRONG_TEMP_PASSWORD',
+     CHECK_POLICY = ON,
+     CHECK_EXPIRATION = OFF;
+GO
+
+USE [YourTestDatabase];
+GO
+
+IF USER_ID(N'SentinelUseCase10TestLogin') IS NOT NULL
+BEGIN
+    USE [master];
+    DROP LOGIN [SentinelUseCase10TestLogin];
+    THROW 50011, 'A database user named SentinelUseCase10TestLogin already exists. The temporary login was removed.', 1;
+END;
+GO
+
+CREATE USER [SentinelUseCase10TestLogin]
+FOR LOGIN [SentinelUseCase10TestLogin];
+GO
+
+GRANT CONNECT TO [SentinelUseCase10TestLogin];
+GO
+
+/*
+Step 2: Open a NEW SQL connection with:
+
+Server:   your SQL Server instance
+Login:    SentinelUseCase10TestLogin
+Password: the temporary password configured above
+Database: YourTestDatabase
+
+Run the following command from that new connection:
+*/
+
+IF ORIGINAL_LOGIN() <> N'SentinelUseCase10TestLogin'
+    THROW 50012, 'Step 2 must run from a new connection authenticated as SentinelUseCase10TestLogin.', 1;
+GO
+
+SELECT
+    ORIGINAL_LOGIN() AS OriginalLogin,
+    SUSER_SNAME() AS CurrentLogin,
+    DB_NAME() AS DatabaseName,
+    SYSDATETIMEOFFSET() AS TestTime;
+GO
+
+/*
+Wait for SecurityEvent ingestion and the five-minute analytics-rule interval.
+After validating the event or alert, reconnect as an administrator and run
+Step 3.
+*/
+
+/* Step 3: Run as an administrator to remove the temporary test account. */
+USE [YourTestDatabase];
+GO
+
+IF USER_ID(N'SentinelUseCase10TestLogin') IS NOT NULL
+    DROP USER [SentinelUseCase10TestLogin];
+GO
+
+USE [master];
+GO
+
+IF SUSER_ID(N'SentinelUseCase10TestLogin') IS NOT NULL
+    DROP LOGIN [SentinelUseCase10TestLogin];
+GO

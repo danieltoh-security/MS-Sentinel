@@ -1,0 +1,26 @@
+/*
+  Microsoft Sentinel use case 9 test:
+  Shutdown Executed - detect database shutdown privileged operations
+
+  WARNING:
+  - Run only on an approved non-production SQL Server instance.
+  - SHUTDOWN stops the entire SQL Server instance, not just one database.
+  - Existing connections will be terminated and the instance must be restarted
+    through SQL Server Configuration Manager, Windows Services, or equivalent.
+  - The login running this command must have sysadmin or serveradmin privileges.
+  - SQL Server Audit must record BATCH_COMPLETED_GROUP to the Windows Security
+    log so event 33205 is ingested into Microsoft Sentinel's SecurityEvent table.
+*/
+
+USE master;
+GO
+
+SELECT
+    @@SERVERNAME AS SqlServerInstance,
+    ORIGINAL_LOGIN() AS ExecutingLogin,
+    SYSDATETIMEOFFSET() AS TestTime;
+GO
+
+-- This statement intentionally stops the SQL Server instance.
+SHUTDOWN;
+GO

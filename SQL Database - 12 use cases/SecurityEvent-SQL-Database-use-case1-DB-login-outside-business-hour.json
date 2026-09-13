@@ -1,0 +1,107 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspace": {
+      "type": "string",
+      "defaultValue": "FY25-Sentinel-Central-workspace",
+      "metadata": {
+        "description": "Name of the Microsoft Sentinel Log Analytics workspace."
+      }
+    },
+    "ruleId": {
+      "type": "string",
+      "defaultValue": "9dbbdeee-676f-4315-a7e7-470352f160ce",
+      "metadata": {
+        "description": "Unique identifier for the analytics rule."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/{1}', parameters('workspace'), parameters('ruleId'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL-DB-usecase1 - Access to SQL Database after Office Hours - SecurityEvent",
+        "description": "Detects successful SQL Server instance logins recorded as MSSQLSERVER SecurityEvent 18454 when a non-whitelisted login signs in outside approved business hours. Event 18454 does not identify the accessed database. Update the timezone, approved hours, and whitelist before enabling in production.",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let BusinessTimeZone = \"Asia/Singapore\";\nlet BusinessStartHour = 8;\nlet BusinessEndHour = 18;\nlet WhitelistedDatabaseUsers = dynamic([\"replace_with_approved_user\", \"replace_with_service_account\"]);\nSecurityEvent\n| where EventSourceName =~ \"MSSQLSERVER\" and EventID == 18454\n| extend ParsedEventData = trim(\" \", replace_regex(replace_regex(EventData, @\"<[^>]+>\", \" \"), @\"\\s+\", \" \"))\n| extend DatabaseUser = extract(@\"^([^ ]+)\", 1, ParsedEventData)\n| extend SourceClient = extract(@\"(?i)\\[CLIENT:\\s*([^\\]]+)\\]\", 1, ParsedEventData)\n| extend SourceClient = replace_string(SourceClient, \"&lt;local machine&gt;\", \"local machine\")\n| where isnotempty(DatabaseUser)\n| where DatabaseUser !in~ (WhitelistedDatabaseUsers)\n| extend LocalEventTime = datetime_utc_to_local(TimeGenerated, BusinessTimeZone)\n| extend LocalHour = datetime_part(\"Hour\", LocalEventTime), LocalDay = dayofweek(LocalEventTime)\n| where LocalDay !between (1d .. 5d) or LocalHour < BusinessStartHour or LocalHour >= BusinessEndHour\n| extend DatabaseHost = Computer\n| extend SourceIpAddress = iff(SourceClient matches regex @\"^(?:\\d{1,3}\\.){3}\\d{1,3}$\" or SourceClient contains \":\", SourceClient, \"\")\n| project TimeGenerated, LocalEventTime, DatabaseUser, DatabaseHost, SourceClient, SourceIpAddress, Computer, EventID, EventSourceName, EventLevelName",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess",
+          "Persistence"
+        ],
+        "techniques": [
+          "T1078"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "alertDetailsOverride": {
+          "alertDisplayNameFormat": "SQL database login by {{DatabaseUser}} outside business hours",
+          "alertDescriptionFormat": "Database user {{DatabaseUser}} successfully logged in to SQL Server host {{DatabaseHost}} at {{LocalEventTime}} outside approved business hours."
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT1H",
+            "matchingMethod": "Selected",
+            "groupByEntities": [
+              "Account",
+              "Host",
+              "IP"
+            ],
+            "groupByAlertDetails": [],
+            "groupByCustomDetails": []
+          }
+        },
+        "entityMappings": [
+          {
+            "entityType": "Account",
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "DatabaseUser"
+              }
+            ]
+          },
+          {
+            "entityType": "Host",
+            "fieldMappings": [
+              {
+                "identifier": "HostName",
+                "columnName": "DatabaseHost"
+              }
+            ]
+          },
+          {
+            "entityType": "IP",
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "SourceIpAddress"
+              }
+            ]
+          }
+        ],
+        "customDetails": {
+          "SourceClient": "SourceClient",
+          "EventLocalTime": "LocalEventTime",
+          "SqlEventId": "EventID",
+          "EventSource": "EventSourceName"
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

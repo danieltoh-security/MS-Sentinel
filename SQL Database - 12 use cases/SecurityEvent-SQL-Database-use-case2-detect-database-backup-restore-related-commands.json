@@ -1,0 +1,107 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspace": {
+      "type": "string",
+      "defaultValue": "FY25-Sentinel-Central-workspace",
+      "metadata": {
+        "description": "Name of the Microsoft Sentinel Log Analytics workspace."
+      }
+    },
+    "ruleId": {
+      "type": "string",
+      "defaultValue": "3b598d16-f6cb-4d89-b28a-4720f14f53b8",
+      "metadata": {
+        "description": "Unique identifier for the analytics rule."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/{1}', parameters('workspace'), parameters('ruleId'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL-DB-usecase2 - SQL Database Backup or Restore Command Detected - SecurityEvent",
+        "description": "Detects SQL Server backup and restore-related T-SQL commands in the SecurityEvent table. The rule covers SQL Server Audit event 33205 and native SQL Server command result events 3014 and 3041. Enable the BACKUP_RESTORE_GROUP audit action group and write audit events to the Windows Security log for user attribution and broader command coverage.",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "SecurityEvent\n| where EventSourceName =~ \"MSSQLSERVER\" and EventID in (33205, 3014, 3041)\n| extend RawEventData = tostring(EventData)\n| extend ParsedEventData = trim(\" \", replace_regex(replace_regex(RawEventData, @\"<[^>]+>\", \" \"), @\"\\s+\", \" \"))\n| extend RawSqlStatement = coalesce(\n    extract(@\"(?is)<Statement>(.*?)</Statement>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)statement(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bstatement\\s*[=:]\\s*(.*?)(?:\\s+[A-Za-z_]+\\s*[=:]|$)\", 1, ParsedEventData),\n    ParsedEventData)\n| extend SqlStatement = trim(\" \", replace_regex(RawSqlStatement, @\"\\s+\", \" \"))\n| where SqlStatement matches regex @\"(?i)\\bBACKUP\\s+(DATABASE|LOG|CERTIFICATE|MASTER\\s+KEY|SERVICE\\s+MASTER\\s+KEY)\\b|\\bRESTORE\\s+(DATABASE|LOG|MASTER\\s+KEY|SERVICE\\s+MASTER\\s+KEY|HEADERONLY|FILELISTONLY|LABELONLY|VERIFYONLY|REWINDONLY)\\b\"\n| extend CommandType = toupper(extract(@\"(?i)\\b((?:BACKUP|RESTORE)\\s+(?:DATABASE|LOG|CERTIFICATE|MASTER\\s+KEY|SERVICE\\s+MASTER\\s+KEY|HEADERONLY|FILELISTONLY|LABELONLY|VERIFYONLY|REWINDONLY))\\b\", 1, SqlStatement))\n| extend DatabaseName = coalesce(\n    extract(@\"(?is)<DatabaseName>(.*?)</DatabaseName>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)database_name(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bdatabase_name\\s*[=:]\\s*([^; ]+)\", 1, ParsedEventData),\n    extract(@\"(?i)\\b(?:BACKUP|RESTORE)\\s+(?:DATABASE|LOG)\\s+([A-Za-z0-9_.$-]+)\", 1, SqlStatement))\n| extend DatabaseUser = coalesce(\n    extract(@\"(?is)<ServerPrincipalName>(.*?)</ServerPrincipalName>\", 1, RawEventData),\n    extract(@\"(?is)<LoginName>(.*?)</LoginName>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)server_principal_name(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bserver_principal_name\\s*[=:]\\s*([^; ]+)\", 1, ParsedEventData))\n| extend SourceClient = coalesce(\n    extract(@\"(?is)<ClientIp>(.*?)</ClientIp>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)client_ip(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bclient_ip\\s*[=:]\\s*([^; ]+)\", 1, ParsedEventData))\n| extend SourceIpAddress = extract(@\"((?:\\d{1,3}\\.){3}\\d{1,3}|[0-9A-Fa-f:]{2,})\", 1, SourceClient), DatabaseHost = Computer\n| project TimeGenerated, CommandType, SqlStatement, DatabaseName, DatabaseUser, DatabaseHost, SourceClient, SourceIpAddress, Computer, EventID, EventSourceName, Activity",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Collection"
+        ],
+        "techniques": [
+          "T1005"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "alertDetailsOverride": {
+          "alertDisplayNameFormat": "SQL {{CommandType}} command detected on {{DatabaseHost}}",
+          "alertDescriptionFormat": "SQL {{CommandType}} activity was detected for database {{DatabaseName}} on host {{DatabaseHost}}. Review the SQL statement and available user context in the alert details and confirm that the operation was authorized."
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT1H",
+            "matchingMethod": "Selected",
+            "groupByEntities": [
+              "Account",
+              "Host",
+              "IP"
+            ],
+            "groupByAlertDetails": [],
+            "groupByCustomDetails": []
+          }
+        },
+        "entityMappings": [
+          {
+            "entityType": "Account",
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "DatabaseUser"
+              }
+            ]
+          },
+          {
+            "entityType": "Host",
+            "fieldMappings": [
+              {
+                "identifier": "HostName",
+                "columnName": "DatabaseHost"
+              }
+            ]
+          },
+          {
+            "entityType": "IP",
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "SourceIpAddress"
+              }
+            ]
+          }
+        ],
+        "customDetails": {
+          "CommandType": "CommandType",
+          "DatabaseName": "DatabaseName",
+          "SqlStatement": "SqlStatement",
+          "SqlEventId": "EventID",
+          "SourceClient": "SourceClient"
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

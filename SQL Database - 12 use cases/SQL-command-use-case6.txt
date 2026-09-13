@@ -1,0 +1,96 @@
+/*
+Microsoft Sentinel use case 6 test:
+Mass Deletion of Records - DELETE affecting more than 20 records,
+excluding approved database accounts
+
+This test creates 25 synthetic rows, deletes all 25 rows in a separately
+audited batch, and then rolls back the transaction. The test table and data
+do not persist after a successful rollback.
+
+Before testing:
+1. Replace REPLACE_WITH_NON_PRODUCTION_DATABASE with a non-production
+   database where the test account can create a table.
+2. Replace the ApprovedDatabaseAccounts placeholders in the analytics rule.
+3. Enable the imported analytics rule.
+4. Run the ENTIRE script in one SQL session using an account that is NOT
+   listed in ApprovedDatabaseAccounts.
+5. Ensure SQL Server Audit captures DELETE activity and includes the
+   affected_rows and statement fields in MSSQLSERVER event 33205.
+6. Ensure event 33205 is ingested into the SecurityEvent table in
+   FY25-Sentinel-Central-workspace.
+
+Expected result:
+- The DELETE batch reports 25 affected rows.
+- The transaction rollback removes the test table and all test data.
+- The analytics rule generates an alert after event ingestion and evaluation.
+
+Safety:
+- Do not run only selected sections of this script.
+- If execution stops before cleanup, run the cleanup section at the end from
+  the same SQL session. Closing the session also rolls back an open
+  transaction.
+*/
+
+USE [REPLACE_WITH_NON_PRODUCTION_DATABASE];
+GO
+
+SET XACT_ABORT ON;
+
+IF OBJECT_ID(N'dbo.SentinelUseCase6MassDeleteTest', N'U') IS NOT NULL
+    THROW 50060, 'SentinelUseCase6MassDeleteTest already exists. Test stopped to avoid modifying an existing table.', 1;
+
+BEGIN TRANSACTION;
+
+CREATE TABLE dbo.SentinelUseCase6MassDeleteTest
+(
+    TestRecordId int NOT NULL
+        CONSTRAINT PK_SentinelUseCase6MassDeleteTest PRIMARY KEY,
+    TestMarker nvarchar(128) NOT NULL
+);
+
+;WITH TestRows AS
+(
+    SELECT 1 AS TestRecordId
+    UNION ALL
+    SELECT TestRecordId + 1
+    FROM TestRows
+    WHERE TestRecordId < 25
+)
+INSERT INTO dbo.SentinelUseCase6MassDeleteTest
+(
+    TestRecordId,
+    TestMarker
+)
+SELECT
+    TestRecordId,
+    N'Sentinel use case 6 - mass deletion test'
+FROM TestRows
+OPTION (MAXRECURSION 25);
+GO
+
+/*
+Keep this DELETE in its own batch. This allows SQL Server Audit to associate
+affected_rows = 25 with the DELETE statement or completed batch.
+*/
+DELETE FROM dbo.SentinelUseCase6MassDeleteTest
+WHERE TestMarker = N'Sentinel use case 6 - mass deletion test';
+GO
+
+/*
+Cleanup: rolling back also removes the test table because it was created
+inside the transaction.
+*/
+IF @@TRANCOUNT > 0
+    ROLLBACK TRANSACTION;
+GO
+
+IF OBJECT_ID(N'dbo.SentinelUseCase6MassDeleteTest', N'U') IS NOT NULL
+    THROW 50061, 'Cleanup validation failed: the test table still exists.', 1;
+
+SELECT
+    N'Sentinel use case 6 test completed; transaction rolled back.'
+        AS TestResult,
+    ORIGINAL_LOGIN() AS OriginalLogin,
+    DB_NAME() AS DatabaseName,
+    SYSDATETIMEOFFSET() AS CompletedAt;
+GO

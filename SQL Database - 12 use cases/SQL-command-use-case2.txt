@@ -1,0 +1,14 @@
+-- Run in SQL Server Management Studio against the SQL Server instance.
+-- Ensure C:\SQLBackups exists and the SQL Server service account can write to it.
+
+BACKUP DATABASE [SentinelTestDB]
+TO DISK = N'C:\SQLBackups\SentinelTestDB_UseCase2_Test.bak'
+WITH INIT, CHECKSUM, STATS = 10;
+GO
+
+-- Optional: validates the backup and tests RESTORE VERIFYONLY detection when
+-- SQL Server Audit BACKUP_RESTORE_GROUP event 33205 is enabled.
+RESTORE VERIFYONLY
+FROM DISK = N'C:\SQLBackups\SentinelTestDB_UseCase2_Test.bak'
+WITH CHECKSUM;
+GO

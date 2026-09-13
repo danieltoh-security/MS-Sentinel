@@ -1,0 +1,80 @@
+/*
+Microsoft Sentinel use case 3 test:
+Attempt to Create Wrapped or Obfuscated Database Object
+
+For SQL Server, WITH ENCRYPTION is the wrapped-object equivalent because it
+obfuscates the stored module definition.
+
+This test creates an encrypted stored procedure inside a transaction and then
+rolls back the transaction. The procedure does not persist after successful
+cleanup.
+
+Before testing:
+1. Replace REPLACE_WITH_NON_PRODUCTION_DATABASE with a non-production
+   database where the test account has CREATE PROCEDURE permission.
+2. Import and enable the use case 3 analytics rule.
+3. Ensure SQL Server Audit captures schema-object changes or completed
+   batches and writes MSSQLSERVER event 33205 to the Windows Security log.
+4. Ensure event 33205 is ingested into the SecurityEvent table in
+   FY25-Sentinel-Central-workspace.
+5. Run the ENTIRE script in one SQL session.
+
+Expected result:
+- SQL Audit records a CREATE PROCEDURE statement containing WITH ENCRYPTION.
+- The analytics rule detects the attempted creation of an obfuscated object.
+- The transaction rollback removes the test procedure.
+
+Safety:
+- Do not run only selected sections of this script.
+- If execution stops before cleanup, run the cleanup section at the end from
+  the same SQL session. Closing the session also rolls back an open
+  transaction.
+*/
+
+USE [REPLACE_WITH_NON_PRODUCTION_DATABASE];
+GO
+
+SET XACT_ABORT ON;
+
+IF OBJECT_ID(N'dbo.SentinelUseCase3WrappedTest', N'P') IS NOT NULL
+    THROW 50030, 'SentinelUseCase3WrappedTest already exists. Test stopped to avoid modifying an existing procedure.', 1;
+
+BEGIN TRANSACTION;
+
+/*
+CREATE PROCEDURE must be the first statement in its batch. Keep this batch
+separate so SQL Server Audit records the complete obfuscated-object command.
+*/
+GO
+
+CREATE PROCEDURE dbo.SentinelUseCase3WrappedTest
+WITH ENCRYPTION
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        N'Sentinel use case 3 - wrapped object test' AS SentinelTestMarker,
+        ORIGINAL_LOGIN() AS OriginalLogin,
+        DB_NAME() AS DatabaseName;
+END;
+GO
+
+/*
+Cleanup: rolling back removes the encrypted procedure because it was created
+inside the transaction.
+*/
+IF @@TRANCOUNT > 0
+    ROLLBACK TRANSACTION;
+GO
+
+IF OBJECT_ID(N'dbo.SentinelUseCase3WrappedTest', N'P') IS NOT NULL
+    THROW 50031, 'Cleanup validation failed: the test procedure still exists.', 1;
+
+SELECT
+    N'Sentinel use case 3 test completed; transaction rolled back.'
+        AS TestResult,
+    ORIGINAL_LOGIN() AS OriginalLogin,
+    DB_NAME() AS DatabaseName,
+    SYSDATETIMEOFFSET() AS CompletedAt;
+GO

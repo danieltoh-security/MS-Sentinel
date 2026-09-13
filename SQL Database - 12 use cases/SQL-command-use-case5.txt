@@ -1,0 +1,45 @@
+/*
+Microsoft Sentinel use case 5 test:
+Long Running Queries - query execution exceeding 3,600,000 ms (1 hour),
+with approved users and service accounts excluded
+
+This test is non-destructive, but it intentionally keeps the SQL session open
+for 1 hour and 5 seconds.
+
+Before testing:
+1. Import the use case 5 analytics rule into Microsoft Sentinel.
+2. Replace the ApprovedOrServiceAccounts placeholders in the rule.
+3. Enable the analytics rule.
+4. Connect with a test SQL account that is NOT listed in
+   ApprovedOrServiceAccounts.
+5. Ensure SQL Server Audit captures BATCH_COMPLETED_GROUP or
+   STATEMENT_COMPLETED_GROUP and writes audit event 33205 to the Windows
+   Security log.
+6. Ensure event 33205 is ingested into the SecurityEvent table in
+   FY25-Sentinel-Central-workspace.
+7. Set the SQL client's command timeout to more than 3,605 seconds, or disable
+   the command timeout. Do not close the session while WAITFOR is running.
+
+Expected result:
+- The audited duration is greater than 3,600,000 milliseconds.
+- The analytics rule generates an alert after the completed event is ingested
+  and evaluated.
+*/
+
+SET NOCOUNT ON;
+
+DECLARE @SentinelUseCase nvarchar(128) =
+    N'Sentinel use case 5 - long-running query test';
+DECLARE @TestStartedAt datetime2(3) = SYSDATETIME();
+
+WAITFOR DELAY '01:00:05';
+
+SELECT
+    @SentinelUseCase AS SentinelTestMarker,
+    ORIGINAL_LOGIN() AS OriginalLogin,
+    SUSER_SNAME() AS CurrentLogin,
+    DB_NAME() AS DatabaseName,
+    @TestStartedAt AS TestStartedAt,
+    SYSDATETIME() AS TestCompletedAt,
+    DATEDIFF_BIG(millisecond, @TestStartedAt, SYSDATETIME())
+        AS ElapsedMilliseconds;

@@ -1,0 +1,25 @@
+/*
+  Microsoft Sentinel use case 8 test:
+  SQL Errors Generated - detect database queries generating SQL exceptions/errors
+
+  Expected SQL Server result:
+  Msg 208, Level 16, State 0
+  Invalid object name '#SentinelUseCase8_TableThatDoesNotExist'.
+
+  This test is non-destructive. The referenced local temporary table is
+  intentionally not created, so the SELECT statement fails.
+
+  Prerequisites:
+  - SQL Server Audit must capture BATCH_COMPLETED_GROUP or an equivalent
+    statement-completion audit action.
+  - The audit target must be the Windows Security log.
+  - SQL Audit event 33205 must be ingested into Microsoft Sentinel's
+    SecurityEvent table.
+*/
+
+USE master;
+GO
+
+SELECT *
+FROM #SentinelUseCase8_TableThatDoesNotExist;
+GO

@@ -1,0 +1,96 @@
+/*
+Microsoft Sentinel use case 11 test:
+Unauthorized Source IP Access - DB login outside the approved source-IP whitelist
+
+Before testing:
+1. Replace YourTestDatabase with a non-production database.
+2. Replace REPLACE_WITH_STRONG_TEMP_PASSWORD with a unique temporary password.
+3. Replace the example entries in ApprovedSourceIpAddresses with the real
+   approved IP addresses, but do not add the test client's server-observed IP.
+4. Enable the imported analytics rule.
+5. Ensure successful SQL logins are audited as MSSQLSERVER event 18454 and
+   ingested into the SecurityEvent table.
+
+IMPORTANT:
+T-SQL cannot spoof a connection's source IP. Complete Step 2 from a separate
+SQL connection originating from an IP address that is not in the rule's
+ApprovedSourceIpAddresses list.
+*/
+
+/* Step 1: Run as an administrator to create the temporary test login. */
+USE [master];
+GO
+
+IF SUSER_ID(N'SentinelUseCase11TestLogin') IS NOT NULL
+    THROW 50020, 'SentinelUseCase11TestLogin already exists. Test stopped to avoid modifying an existing login.', 1;
+GO
+
+CREATE LOGIN [SentinelUseCase11TestLogin]
+WITH PASSWORD = N'REPLACE_WITH_STRONG_TEMP_PASSWORD',
+     CHECK_POLICY = ON,
+     CHECK_EXPIRATION = OFF;
+GO
+
+USE [YourTestDatabase];
+GO
+
+IF USER_ID(N'SentinelUseCase11TestLogin') IS NOT NULL
+BEGIN
+    USE [master];
+    DROP LOGIN [SentinelUseCase11TestLogin];
+    THROW 50021, 'A database user named SentinelUseCase11TestLogin already exists. The temporary login was removed.', 1;
+END;
+GO
+
+CREATE USER [SentinelUseCase11TestLogin]
+FOR LOGIN [SentinelUseCase11TestLogin];
+GO
+
+GRANT CONNECT TO [SentinelUseCase11TestLogin];
+GO
+
+/*
+Step 2: From a host whose server-observed source IP is not whitelisted, open
+a NEW SQL connection with:
+
+Server:   your SQL Server instance
+Login:    SentinelUseCase11TestLogin
+Password: the temporary password configured above
+Database: YourTestDatabase
+
+Run the following commands from that new connection:
+*/
+
+IF ORIGINAL_LOGIN() <> N'SentinelUseCase11TestLogin'
+    THROW 50022, 'Step 2 must run from a new connection authenticated as SentinelUseCase11TestLogin.', 1;
+GO
+
+SELECT
+    ORIGINAL_LOGIN() AS OriginalLogin,
+    SUSER_SNAME() AS CurrentLogin,
+    DB_NAME() AS DatabaseName,
+    CONVERT(varchar(48), CONNECTIONPROPERTY('client_net_address')) AS ServerObservedClientIp,
+    SYSDATETIMEOFFSET() AS TestTime;
+GO
+
+/*
+Confirm that ServerObservedClientIp is not in ApprovedSourceIpAddresses.
+Wait for SecurityEvent ingestion and the five-minute analytics-rule interval.
+After validating the event or alert, reconnect as an administrator and run
+Step 3.
+*/
+
+/* Step 3: Run as an administrator to remove the temporary test account. */
+USE [YourTestDatabase];
+GO
+
+IF USER_ID(N'SentinelUseCase11TestLogin') IS NOT NULL
+    DROP USER [SentinelUseCase11TestLogin];
+GO
+
+USE [master];
+GO
+
+IF SUSER_ID(N'SentinelUseCase11TestLogin') IS NOT NULL
+    DROP LOGIN [SentinelUseCase11TestLogin];
+GO

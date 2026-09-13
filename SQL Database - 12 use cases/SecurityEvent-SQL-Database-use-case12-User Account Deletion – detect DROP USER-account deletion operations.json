@@ -1,0 +1,119 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspace": {
+      "type": "string",
+      "defaultValue": "FY25-Sentinel-Central-workspace",
+      "metadata": {
+        "description": "Name of the Microsoft Sentinel Log Analytics workspace."
+      }
+    },
+    "ruleId": {
+      "type": "string",
+      "defaultValue": "f5c50aed-640b-40fd-b93c-49683aabcb92",
+      "metadata": {
+        "description": "Unique identifier for the analytics rule."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/{1}', parameters('workspace'), parameters('ruleId'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL-DB-usecase12 - SQL User Account Deletion Detected - SecurityEvent",
+        "description": "Detects SQL Server DROP USER and DROP LOGIN statements in SQL Audit events ingested into the SecurityEvent table. These commands remove database users or server logins and may disrupt legitimate access or conceal malicious activity. Configure SQL Server Audit to write DATABASE_PRINCIPAL_CHANGE_GROUP and SERVER_PRINCIPAL_CHANGE_GROUP events to the Windows Security log so event 33205 includes the SQL statement and actor context.",
+        "severity": "High",
+        "enabled": true,
+        "query": "SecurityEvent\n| where EventSourceName =~ \"MSSQLSERVER\" and EventID == 33205\n| extend RawEventData = tostring(EventData)\n| extend ParsedEventData = trim(\" \", replace_regex(replace_regex(RawEventData, @\"<[^>]+>\", \" \"), @\"\\s+\", \" \"))\n| extend RawSqlStatement = coalesce(\n    extract(@\"(?is)<Statement>(.*?)</Statement>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)statement(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bstatement\\s*[=:]\\s*(.*?)(?:\\s+[A-Za-z_]+\\s*[=:]|$)\", 1, ParsedEventData))\n| extend SqlStatement = trim(\" \", replace_regex(RawSqlStatement, @\"\\s+\", \" \"))\n| where isnotempty(SqlStatement)\n| where SqlStatement matches regex @\"(?i)\\bDROP\\s+(?:USER|LOGIN)\\s+(?:IF\\s+EXISTS\\s+)?(?:\\[[^\\]]+\\]|\\x22[^\\x22]+\\x22|[A-Za-z0-9_.$#@-]+)\"\n| extend DeletionOperation = toupper(extract(@\"(?i)\\b(DROP\\s+(?:USER|LOGIN))\\b\", 1, SqlStatement))\n| extend DeletedAccountToken = extract(@\"(?i)\\bDROP\\s+(?:USER|LOGIN)\\s+(?:IF\\s+EXISTS\\s+)?(\\[[^\\]]+\\]|\\x22[^\\x22]+\\x22|[A-Za-z0-9_.$#@-]+)\", 1, SqlStatement)\n| extend DeletedAccount = trim(@\"[\\[\\]\\x22]\", DeletedAccountToken)\n| extend DatabaseName = coalesce(\n    extract(@\"(?is)<DatabaseName>(.*?)</DatabaseName>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)database_name(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bdatabase_name\\s*[=:]\\s*([^; ]+)\", 1, ParsedEventData))\n| extend DatabaseUser = coalesce(\n    extract(@\"(?is)<ServerPrincipalName>(.*?)</ServerPrincipalName>\", 1, RawEventData),\n    extract(@\"(?is)<SessionServerPrincipalName>(.*?)</SessionServerPrincipalName>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)(?:server_principal_name|session_server_principal_name)(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\b(?:server_principal_name|session_server_principal_name)\\s*[=:]\\s*([^; ]+)\", 1, ParsedEventData))\n| extend SourceClient = coalesce(\n    extract(@\"(?is)<ClientIp>(.*?)</ClientIp>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)client_ip(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bclient_ip\\s*[=:]\\s*([^; ]+)\", 1, ParsedEventData))\n| extend ApplicationName = coalesce(\n    extract(@\"(?is)<ApplicationName>(.*?)</ApplicationName>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)application_name(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bapplication_name\\s*[=:]\\s*(.*?)(?:\\s+[A-Za-z_]+\\s*[=:]|$)\", 1, ParsedEventData))\n| extend AuditSucceeded = coalesce(\n    extract(@\"(?is)<Succeeded>(.*?)</Succeeded>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)succeeded(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bsucceeded\\s*[=:]\\s*([^; ]+)\", 1, ParsedEventData))\n| extend DatabaseHost = Computer\n| extend SourceIpAddress = extract(@\"((?:\\d{1,3}\\.){3}\\d{1,3}|[0-9A-Fa-f:]{2,})\", 1, SourceClient)\n| project TimeGenerated, DeletionOperation, DeletedAccount, DatabaseName, DatabaseUser, DatabaseHost, SourceClient, SourceIpAddress, ApplicationName, AuditSucceeded, SqlStatement, Computer, EventID, EventSourceName, Activity",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Impact"
+        ],
+        "techniques": [
+          "T1531"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "alertDetailsOverride": {
+          "alertDisplayNameFormat": "SQL {{DeletionOperation}} for {{DeletedAccount}} by {{DatabaseUser}}",
+          "alertDescriptionFormat": "{{DeletionOperation}} was issued for account {{DeletedAccount}} on {{DatabaseHost}}. Review the actor, database, audit success status, and SQL statement in the alert custom details, then confirm that the account deletion was authorized."
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT1H",
+            "matchingMethod": "Selected",
+            "groupByEntities": [
+              "Account",
+              "Host",
+              "IP"
+            ],
+            "groupByAlertDetails": [],
+            "groupByCustomDetails": []
+          }
+        },
+        "entityMappings": [
+          {
+            "entityType": "Account",
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "DatabaseUser"
+              }
+            ]
+          },
+          {
+            "entityType": "Account",
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "DeletedAccount"
+              }
+            ]
+          },
+          {
+            "entityType": "Host",
+            "fieldMappings": [
+              {
+                "identifier": "HostName",
+                "columnName": "DatabaseHost"
+              }
+            ]
+          },
+          {
+            "entityType": "IP",
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "SourceIpAddress"
+              }
+            ]
+          }
+        ],
+        "customDetails": {
+          "DeletionOperation": "DeletionOperation",
+          "DeletedAccount": "DeletedAccount",
+          "DatabaseName": "DatabaseName",
+          "SqlStatement": "SqlStatement",
+          "AuditSucceeded": "AuditSucceeded",
+          "ApplicationName": "ApplicationName",
+          "SourceClient": "SourceClient",
+          "SqlEventId": "EventID"
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

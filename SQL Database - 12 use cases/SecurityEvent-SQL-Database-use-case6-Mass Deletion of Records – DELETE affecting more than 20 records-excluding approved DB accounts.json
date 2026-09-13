@@ -1,0 +1,109 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspace": {
+      "type": "string",
+      "defaultValue": "FY25-Sentinel-Central-workspace",
+      "metadata": {
+        "description": "Name of the Microsoft Sentinel Log Analytics workspace."
+      }
+    },
+    "ruleId": {
+      "type": "string",
+      "defaultValue": "8e18a00b-fd6a-455c-acf3-a64d213ca668",
+      "metadata": {
+        "description": "Unique identifier for the analytics rule."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/{1}', parameters('workspace'), parameters('ruleId'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL-DB-usecase6 - Mass SQL Record Deletion Exceeding 20 Rows - SecurityEvent",
+        "description": "Detects SQL Server Audit event 33205 records ingested into SecurityEvent when a DELETE statement affects more than 20 rows. Approved database accounts are excluded case-insensitively. Replace the placeholder entries in ApprovedDatabaseAccounts, validate the query against the workspace's EventData format, and then enable the rule.",
+        "severity": "High",
+        "enabled": false,
+        "query": "let MassDeletionThreshold = 20;\nlet ApprovedDatabaseAccounts = dynamic([\n    \"replace_with_approved_db_user\",\n    \"replace_with_approved_service_account\"\n]);\nSecurityEvent\n| where EventSourceName =~ \"MSSQLSERVER\" and EventID == 33205\n| extend RawEventData = tostring(EventData)\n| extend ParsedEventData = trim(\" \", replace_regex(replace_regex(RawEventData, @\"<[^>]+>\", \" \"), @\"\\s+\", \" \"))\n| extend AffectedRows = tolong(coalesce(\n    extract(@\"(?is)<AffectedRows>(\\d+)</AffectedRows>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)affected_rows(?:\\x22|\\x27)>(\\d+)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\baffected_rows\\s*[=:]\\s*(\\d+)\\b\", 1, ParsedEventData)))\n| where AffectedRows > MassDeletionThreshold\n| extend RawSqlStatement = coalesce(\n    extract(@\"(?is)<Statement>(.*?)</Statement>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)statement(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bstatement\\s*[=:]\\s*(.*?)(?:\\s+[A-Za-z_]+\\s*[=:]|$)\", 1, ParsedEventData))\n| extend SqlStatement = trim(\" \", replace_regex(RawSqlStatement, @\"\\s+\", \" \"))\n| where SqlStatement matches regex @\"(?i)(?:^|;)\\s*DELETE\\s+(?:TOP\\s*\\([^)]*\\)\\s+)?(?:FROM\\s+)?\"\n| extend SqlStatement = substring(SqlStatement, 0, 4000)\n| extend DatabaseUser = coalesce(\n    extract(@\"(?is)<ServerPrincipalName>(.*?)</ServerPrincipalName>\", 1, RawEventData),\n    extract(@\"(?is)<SessionServerPrincipalName>(.*?)</SessionServerPrincipalName>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)(?:server_principal_name|session_server_principal_name)(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\b(?:server_principal_name|session_server_principal_name)\\s*[=:]\\s*([^;]+?)(?:\\s+[A-Za-z_]+\\s*[=:]|$)\", 1, ParsedEventData))\n| extend DatabaseUser = trim(\" \", DatabaseUser)\n| where isempty(DatabaseUser) or DatabaseUser !in~ (ApprovedDatabaseAccounts)\n| extend DatabaseName = coalesce(\n    extract(@\"(?is)<DatabaseName>(.*?)</DatabaseName>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)database_name(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bdatabase_name\\s*[=:]\\s*([^;]+?)(?:\\s+[A-Za-z_]+\\s*[=:]|$)\", 1, ParsedEventData))\n| extend SchemaName = coalesce(\n    extract(@\"(?is)<SchemaName>(.*?)</SchemaName>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)schema_name(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bschema_name\\s*[=:]\\s*([^;]+?)(?:\\s+[A-Za-z_]+\\s*[=:]|$)\", 1, ParsedEventData))\n| extend ObjectName = coalesce(\n    extract(@\"(?is)<ObjectName>(.*?)</ObjectName>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)object_name(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bobject_name\\s*[=:]\\s*([^;]+?)(?:\\s+[A-Za-z_]+\\s*[=:]|$)\", 1, ParsedEventData))\n| extend SourceClient = coalesce(\n    extract(@\"(?is)<ClientIp>(.*?)</ClientIp>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)client_ip(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bclient_ip\\s*[=:]\\s*([^; ]+)\", 1, ParsedEventData))\n| extend ApplicationName = coalesce(\n    extract(@\"(?is)<ApplicationName>(.*?)</ApplicationName>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)application_name(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"(?i)\\bapplication_name\\s*[=:]\\s*(.*?)(?:\\s+[A-Za-z_]+\\s*[=:]|$)\", 1, ParsedEventData))\n| extend DatabaseHost = Computer\n| extend SourceIpAddress = extract(@\"((?:\\d{1,3}\\.){3}\\d{1,3}|[0-9A-Fa-f:]{2,})\", 1, SourceClient)\n| project TimeGenerated, DatabaseUser, DatabaseName, SchemaName, ObjectName, DatabaseHost, SourceClient, SourceIpAddress, ApplicationName, AffectedRows, SqlStatement, Computer, EventID, EventSourceName, Activity",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Impact"
+        ],
+        "techniques": [
+          "T1485"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "alertDetailsOverride": {
+          "alertDisplayNameFormat": "Mass SQL deletion by {{DatabaseUser}} on {{DatabaseHost}}",
+          "alertDescriptionFormat": "SQL user {{DatabaseUser}} deleted {{AffectedRows}} rows on {{DatabaseHost}}. Review the database, object, statement, source client, and application details."
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT1H",
+            "matchingMethod": "Selected",
+            "groupByEntities": [
+              "Account",
+              "Host",
+              "IP"
+            ],
+            "groupByAlertDetails": [],
+            "groupByCustomDetails": []
+          }
+        },
+        "entityMappings": [
+          {
+            "entityType": "Account",
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "DatabaseUser"
+              }
+            ]
+          },
+          {
+            "entityType": "Host",
+            "fieldMappings": [
+              {
+                "identifier": "HostName",
+                "columnName": "DatabaseHost"
+              }
+            ]
+          },
+          {
+            "entityType": "IP",
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "SourceIpAddress"
+              }
+            ]
+          }
+        ],
+        "customDetails": {
+          "AffectedRows": "AffectedRows",
+          "DatabaseName": "DatabaseName",
+          "SchemaName": "SchemaName",
+          "ObjectName": "ObjectName",
+          "ApplicationName": "ApplicationName",
+          "SourceClient": "SourceClient",
+          "SqlEventId": "EventID"
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

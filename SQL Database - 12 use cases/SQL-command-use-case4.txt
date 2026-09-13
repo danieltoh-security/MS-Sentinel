@@ -1,0 +1,55 @@
+/*
+Microsoft Sentinel use case 4 test:
+More than 5 failed SQL database login attempts within 300 seconds from the
+same source IP
+
+Important:
+A failed-login event cannot be generated from an already authenticated T-SQL
+session. The failure must occur while opening a new connection. Run the
+PowerShell command below from a machine with the sqlcmd utility installed.
+
+This test is non-destructive. It uses a deliberately nonexistent SQL login and
+does not create or modify database objects.
+
+Before testing:
+1. Replace REPLACE_WITH_SQL_SERVER with the SQL Server host or
+   host\instance name.
+2. Ensure the SQL Server accepts SQL authentication attempts.
+3. Ensure failed SQL logins are recorded as MSSQLSERVER event 18456 in the
+   Windows Security log.
+4. Ensure event 18456 is ingested into the SecurityEvent table in
+   FY25-Sentinel-Central-workspace.
+5. Import and enable the use case 4 analytics rule.
+6. Run all six attempts from the same client machine so they have the same
+   source IP.
+
+Expected result:
+- Six failed authentication attempts occur within approximately 10 seconds.
+- Each attempt uses the same source IP.
+- The analytics rule detects more than five failures within 300 seconds.
+- No SQL login, database object, or data is created.
+*/
+
+# Run this section in PowerShell, not in a T-SQL query window.
+
+$SqlServer = 'REPLACE_WITH_SQL_SERVER'
+$NonexistentLogin = 'SentinelUseCase4FailedLoginTest'
+$IntentionallyWrongPassword = 'Intentionally-Wrong-Password-UseCase4!'
+
+1..6 | ForEach-Object {
+    Write-Host "Generating failed SQL login attempt $_ of 6"
+
+    & sqlcmd `
+        -S $SqlServer `
+        -d master `
+        -U $NonexistentLogin `
+        -P $IntentionallyWrongPassword `
+        -Q 'SELECT 1;' `
+        -l 5 `
+        -C `
+        -b
+
+    Start-Sleep -Seconds 2
+}
+
+Write-Host 'Six failed login attempts completed. Allow time for SecurityEvent ingestion and the five-minute analytics-rule schedule.'

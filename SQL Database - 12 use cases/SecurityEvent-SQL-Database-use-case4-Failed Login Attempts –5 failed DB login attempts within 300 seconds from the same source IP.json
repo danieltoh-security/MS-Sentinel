@@ -1,0 +1,88 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspace": {
+      "type": "string",
+      "defaultValue": "FY25-Sentinel-Central-workspace",
+      "metadata": {
+        "description": "Name of the Microsoft Sentinel Log Analytics workspace."
+      }
+    },
+    "ruleId": {
+      "type": "string",
+      "defaultValue": "3e7fb8c5-764b-41f4-a8a0-402820a06674",
+      "metadata": {
+        "description": "Unique identifier for the analytics rule."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/{1}', parameters('workspace'), parameters('ruleId'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL-DB-usecase4 - Multiple Failed SQL Database Logins from Same Source IP - SecurityEvent",
+        "description": "Detects more than five failed SQL Server database login attempts within any sliding 300-second window from the same source IP. The rule uses MSSQLSERVER SecurityEvent 18456 records and a ten-minute lookback so attempts spanning scheduled-query boundaries are detected. Validate EventData parsing against the workspace before enabling.",
+        "severity": "Medium",
+        "enabled": false,
+        "query": "let FailedLoginThreshold = 5;\nlet DetectionWindow = 5m;\nlet FailedEvents = materialize(\n    SecurityEvent\n    | where EventSourceName =~ \"MSSQLSERVER\" and EventID == 18456\n    | extend RawEventData = tostring(EventData)\n    | extend ParsedEventData = trim(\" \", replace_regex(replace_regex(RawEventData, @\"<[^>]+>\", \" \"), @\"\\s+\", \" \"))\n    | extend DatabaseUser = coalesce(\n        extract(@\"(?is)<LoginName>(.*?)</LoginName>\", 1, RawEventData),\n        extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)(?:LoginName|login_name|server_principal_name|param1)(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n        extract(@\"(?i)Login failed for user\\s+(?:\\x27|\\x22)(.*?)(?:\\x27|\\x22)\", 1, ParsedEventData),\n        extract(@\"^([^ ]+)\", 1, ParsedEventData))\n    | extend FailureReason = coalesce(\n        extract(@\"(?is)<Reason>(.*?)</Reason>\", 1, RawEventData),\n        extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)(?:Reason|reason|param2)(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n        extract(@\"(?i)Reason:\\s*(.*?)(?:\\s+\\[CLIENT:|$)\", 1, ParsedEventData))\n    | extend SourceClient = coalesce(\n        extract(@\"(?i)\\[CLIENT:\\s*([^\\]]+)\\]\", 1, ParsedEventData),\n        extract(@\"(?is)<ClientIp>(.*?)</ClientIp>\", 1, RawEventData),\n        extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)(?:client_ip|param3)(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData))\n    | extend SourceClient = replace_string(SourceClient, \"&lt;local machine&gt;\", \"local machine\")\n    | extend SourceIpAddress = extract(@\"((?:\\d{1,3}\\.){3}\\d{1,3}|[0-9A-Fa-f:]{2,})\", 1, SourceClient)\n    | where isnotempty(SourceIpAddress)\n    | extend DatabaseHost = Computer\n    | project TimeGenerated, SourceIpAddress, SourceClient, DatabaseUser, FailureReason, DatabaseHost\n);\nFailedEvents\n| project SourceIpAddress, WindowStart = TimeGenerated\n| join kind=inner hint.strategy=broadcast (\n    FailedEvents\n    | project SourceIpAddress, AttemptTime = TimeGenerated, DatabaseUser, FailureReason, DatabaseHost\n) on SourceIpAddress\n| where AttemptTime between (WindowStart .. (WindowStart + DetectionWindow))\n| summarize\n    FailedLoginCount = count(),\n    FirstAttempt = min(AttemptTime),\n    LastAttempt = max(AttemptTime),\n    TargetedDatabaseUsers = make_set(DatabaseUser, 25),\n    FailureReasons = make_set(FailureReason, 10),\n    DatabaseHosts = make_set(DatabaseHost, 10)\n    by SourceIpAddress, WindowStart\n| where FailedLoginCount > FailedLoginThreshold\n| where LastAttempt > ago(5m)\n| summarize arg_max(FailedLoginCount, *) by SourceIpAddress\n| extend TargetedDatabaseUsersText = strcat_array(TargetedDatabaseUsers, \", \")\n| extend FailureReasonsText = strcat_array(FailureReasons, \", \")\n| extend DatabaseHostsText = strcat_array(DatabaseHosts, \", \")\n| project SourceIpAddress, FailedLoginCount, FirstAttempt, LastAttempt, TargetedDatabaseUsersText, FailureReasonsText, DatabaseHostsText",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT10M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CredentialAccess"
+        ],
+        "techniques": [
+          "T1110"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "alertDetailsOverride": {
+          "alertDisplayNameFormat": "Multiple failed SQL logins from {{SourceIpAddress}}",
+          "alertDescriptionFormat": "{{FailedLoginCount}} failed SQL database logins from {{SourceIpAddress}} targeted {{TargetedDatabaseUsersText}} within 300 seconds."
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT1H",
+            "matchingMethod": "Selected",
+            "groupByEntities": [
+              "IP"
+            ],
+            "groupByAlertDetails": [],
+            "groupByCustomDetails": []
+          }
+        },
+        "entityMappings": [
+          {
+            "entityType": "IP",
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "SourceIpAddress"
+              }
+            ]
+          }
+        ],
+        "customDetails": {
+          "FailedLoginCount": "FailedLoginCount",
+          "FirstAttempt": "FirstAttempt",
+          "LastAttempt": "LastAttempt",
+          "TargetedDBUsers": "TargetedDatabaseUsersText",
+          "FailureReasons": "FailureReasonsText",
+          "DatabaseHosts": "DatabaseHostsText"
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

@@ -1,0 +1,43 @@
+-- Microsoft Sentinel use case 1 test
+-- Rule: Access to SQL Database after Office Hours - SecurityEvent
+-- Run the login test outside 08:00-18:00 Asia/Singapore, or on Saturday/Sunday.
+-- SQL Server successful-login auditing must be enabled so MSSQLSERVER event 18454
+-- is written to the Windows Application log and ingested into SecurityEvent.
+
+-- STEP 1: Run as a SQL Server administrator in SSMS or sqlcmd.
+USE [master];
+GO
+
+IF SUSER_ID(N'SentinelUseCase1Test') IS NULL
+BEGIN
+    CREATE LOGIN [SentinelUseCase1Test]
+        WITH PASSWORD = N'Replace-With-A-Strong-Temporary-Password!2026',
+             CHECK_POLICY = ON,
+             CHECK_EXPIRATION = OFF;
+END;
+GO
+
+-- STEP 2: Open a NEW terminal connection with the test login.
+-- Replace <SQL_SERVER> and the password before running this command.
+-- A real connection is required; EXECUTE AS LOGIN does not create event 18454.
+--
+-- sqlcmd -S "tcp:<SQL_SERVER>,1433" -U "SentinelUseCase1Test" -P "Replace-With-A-Strong-Temporary-Password!2026" -Q "SELECT ORIGINAL_LOGIN() AS LoginName, @@SERVERNAME AS SqlServer, SYSDATETIMEOFFSET() AS LoginTime;"
+
+-- STEP 3: After Sentinel has ingested the event and the rule has run, clean up
+-- using an administrator connection.
+USE [master];
+GO
+
+IF SUSER_ID(N'SentinelUseCase1Test') IS NOT NULL
+BEGIN
+    DROP LOGIN [SentinelUseCase1Test];
+END;
+GO
+
+-- Expected SecurityEvent values:
+-- EventSourceName: MSSQLSERVER
+-- EventID:          18454
+-- DatabaseUser:    SentinelUseCase1Test
+--
+-- The alert can take the Windows event collection delay plus the rule's
+-- five-minute query frequency to appear.

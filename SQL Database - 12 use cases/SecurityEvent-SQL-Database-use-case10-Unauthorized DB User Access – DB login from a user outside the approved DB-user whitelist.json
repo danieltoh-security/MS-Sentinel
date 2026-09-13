@@ -1,0 +1,108 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspace": {
+      "type": "string",
+      "defaultValue": "FY25-Sentinel-Central-workspace",
+      "metadata": {
+        "description": "Name of the Microsoft Sentinel Log Analytics workspace."
+      }
+    },
+    "ruleId": {
+      "type": "string",
+      "defaultValue": "f1d4289d-525c-40df-82ef-ca91a60e571d",
+      "metadata": {
+        "description": "Unique identifier for the analytics rule."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/{1}', parameters('workspace'), parameters('ruleId'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL-DB-usecase10 - Unauthorized SQL Database User Access - SecurityEvent",
+        "description": "Detects successful SQL Server logins recorded as MSSQLSERVER SecurityEvent 18454 when the database user is not in the approved whitelist. Replace the placeholder entries in ApprovedDatabaseUsers with the organization's approved SQL users and service accounts before enabling this rule.",
+        "severity": "Medium",
+        "enabled": false,
+        "query": "let ApprovedDatabaseUsers = dynamic([\n    \"replace_with_approved_db_user\",\n    \"replace_with_approved_service_account\"\n]);\nSecurityEvent\n| where EventSourceName =~ \"MSSQLSERVER\" and EventID == 18454\n| extend RawEventData = tostring(EventData)\n| extend ParsedEventData = trim(\" \", replace_regex(replace_regex(RawEventData, @\"<[^>]+>\", \" \"), @\"\\s+\", \" \"))\n| extend DatabaseUser = coalesce(\n    extract(@\"(?is)<LoginName>(.*?)</LoginName>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)(?:LoginName|login_name|server_principal_name)(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData),\n    extract(@\"^([^ ]+)\", 1, ParsedEventData))\n| extend SourceClient = coalesce(\n    extract(@\"(?i)\\[CLIENT:\\s*([^\\]]+)\\]\", 1, ParsedEventData),\n    extract(@\"(?is)<ClientIp>(.*?)</ClientIp>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)client_ip(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData))\n| extend SourceClient = replace_string(SourceClient, \"&lt;local machine&gt;\", \"local machine\")\n| where isnotempty(DatabaseUser)\n| where DatabaseUser !in~ (ApprovedDatabaseUsers)\n| extend DatabaseName = coalesce(\n    extract(@\"(?is)<DatabaseName>(.*?)</DatabaseName>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)database_name(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData))\n| extend ApplicationName = coalesce(\n    extract(@\"(?is)<ApplicationName>(.*?)</ApplicationName>\", 1, RawEventData),\n    extract(@\"(?is)<Data\\s+Name=(?:\\x22|\\x27)application_name(?:\\x22|\\x27)>(.*?)</Data>\", 1, RawEventData))\n| extend DatabaseHost = Computer\n| extend SourceIpAddress = iff(SourceClient matches regex @\"^(?:\\d{1,3}\\.){3}\\d{1,3}$\" or SourceClient contains \":\", SourceClient, \"\")\n| project TimeGenerated, DatabaseUser, DatabaseHost, DatabaseName, SourceClient, SourceIpAddress, ApplicationName, Computer, EventID, EventSourceName, EventLevelName, Activity",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess",
+          "Persistence"
+        ],
+        "techniques": [
+          "T1078"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "alertDetailsOverride": {
+          "alertDisplayNameFormat": "Unapproved SQL login by {{DatabaseUser}} on {{DatabaseHost}}",
+          "alertDescriptionFormat": "SQL user {{DatabaseUser}} logged in to {{DatabaseHost}} from {{SourceClient}} but is not in the approved database-user whitelist. Confirm whether this access is authorized."
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT1H",
+            "matchingMethod": "Selected",
+            "groupByEntities": [
+              "Account",
+              "Host",
+              "IP"
+            ],
+            "groupByAlertDetails": [],
+            "groupByCustomDetails": []
+          }
+        },
+        "entityMappings": [
+          {
+            "entityType": "Account",
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "DatabaseUser"
+              }
+            ]
+          },
+          {
+            "entityType": "Host",
+            "fieldMappings": [
+              {
+                "identifier": "HostName",
+                "columnName": "DatabaseHost"
+              }
+            ]
+          },
+          {
+            "entityType": "IP",
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "SourceIpAddress"
+              }
+            ]
+          }
+        ],
+        "customDetails": {
+          "DatabaseName": "DatabaseName",
+          "ApplicationName": "ApplicationName",
+          "SourceClient": "SourceClient",
+          "SqlEventId": "EventID",
+          "EventSource": "EventSourceName"
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}
