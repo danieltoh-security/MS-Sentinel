@@ -1,0 +1,2559 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspace": {
+      "type": "string",
+      "metadata": {
+        "description": "Log Analytics workspace resource name for Microsoft Sentinel analytics rules."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/84037130-a623-46c2-9144-0c0955ac4112', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Acronis - Login from Abnormal IP - Low Occurrence",
+        "description": "Suspicious login from an IP address observed up to two times in the last two weeks.",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceVendor == \"Acronis audit\"\n| extend initiator_ip = tostring(parse_json(DeviceCustomString1).initiator_ip)\n| summarize LoginCount = count() by initiator_ip\n| where LoginCount <= 2\n| order by LoginCount asc\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess"
+        ],
+        "techniques": [
+          "T1078"
+        ],
+        "alertRuleTemplateName": "84037130-a623-46c2-9144-0c0955ac4112",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": true,
+            "lookbackDuration": "P7D",
+            "matchingMethod": "Selected",
+            "groupByEntities": [
+              "IP"
+            ],
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "P1D",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/1385f0ce-69d9-4abf-8039-52080c8c7017', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Acronis - Multiple Endpoints Accessing Malicious URLs",
+        "description": "Multiple endpoints accessing malicious URLs could indicate an ongoing phishing attack, with several employees interacting with those URLs.",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceVendor == \"Acronis\"\n| where DeviceEventClassID == \"MaliciousUrlDetected\"\n| summarize MaliciousUrlDetected = count() by DeviceName\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Execution"
+        ],
+        "techniques": [
+          "T1204"
+        ],
+        "alertRuleTemplateName": "1385f0ce-69d9-4abf-8039-52080c8c7017",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "SingleAlert"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": true,
+            "lookbackDuration": "P1D",
+            "matchingMethod": "AnyAlert",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P1D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 2,
+        "subTechniques": [
+          "T1204.001"
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/a783ade7-bf43-416d-b809-8f5b06d87790', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Acronis - Multiple Endpoints Infected by Ransomware",
+        "description": "Detects when three or more distinct endpoints report ransomware detections within a single day.",
+        "severity": "High",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceVendor == \"Acronis\"\n| where DeviceEventClassID == \"ActiveProtectionBlocksSuspiciousActivity\"\n| summarize ActiveProtectionBlocksSuspiciousActivity = count() by DeviceName\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Impact"
+        ],
+        "techniques": [
+          "T1486"
+        ],
+        "alertRuleTemplateName": "a783ade7-bf43-416d-b809-8f5b06d87790",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "SingleAlert"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": true,
+            "lookbackDuration": "P1D",
+            "matchingMethod": "AnyAlert",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P1D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 2
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/5090ad7b-4b47-4cab-9015-bffb43aecde8', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Acronis - Multiple Inboxes with Malicious Content Detected",
+        "description": "Many inboxes containing malicious content could indicate a potential ongoing phishing attack.",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceVendor == \"Acronis\"\n| where DeviceEventClassID in\n(\"MaliciousURLDetectedInM365MailboxBackup\",\n\"MalwareDetectedInM365MailboxBackup\",\n\"MaliciousEmailDetectedPerceptionPointWarning\")\n| summarize MaliciousContent = count() by DeviceName\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess"
+        ],
+        "techniques": [
+          "T1566"
+        ],
+        "alertRuleTemplateName": "5090ad7b-4b47-4cab-9015-bffb43aecde8",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "SingleAlert"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": true,
+            "lookbackDuration": "P1D",
+            "matchingMethod": "AnyAlert",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P1D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 2,
+        "subTechniques": [
+          "T1566.002",
+          "T1566.001"
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/6e575295-a7e6-464c-8192-3e1d8fd6a990', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Log4j vulnerability exploit aka Log4Shell IP IOC",
+        "description": "'Identifies a match across various data feeds for IP IOCs related to the Log4j vulnerability exploit aka Log4Shell described in CVE-2021-44228.\n References: https://cve.mitre.org/cgi-bin/cvename.cgi?name=2021-44228'\n",
+        "severity": "High",
+        "enabled": true,
+        "query": "let IPList = externaldata(IPAddress:string)[@\"https://raw.githubusercontent.com/Azure/Azure-Sentinel/master/Sample%20Data/Feeds/Log4j_IOC_List.csv\"] with (format=\"csv\", ignoreFirstRecord=True);\nlet IPRegex = @'[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}';\nCommonSecurityLog\n| extend MessageIP = extract(IPRegex, 0, Message)\n| mv-expand IPAddress = pack_array(SourceIP, DestinationIP, MessageIP) to typeof(string)\n| where isnotempty(IPAddress)\n| where IPAddress in (IPList)\n| project TimeGenerated, IPAddress, Type, DeviceVendor, DeviceProduct, DeviceAction, SourceIP, DestinationIP, Message\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071"
+        ],
+        "alertRuleTemplateName": "6e575295-a7e6-464c-8192-3e1d8fd6a990",
+        "templateVersion": "2.0.6",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/90b7ac11-dd6c-4ba1-a99b-737061873859', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Awake Security - High Match Counts By Device",
+        "description": "This query searches for devices with unexpectedly large number of activity match.",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceVendor == \"Arista Networks\" and DeviceProduct == \"Awake Security\"\n| summarize StartTime=min(TimeGenerated), EndTime=max(TimeGenerated), Models=make_set(Activity), ASPMatchURLs=make_set(DeviceCustomString2), SourceIPs=make_set(SourceIP),\n  DestinationIPs=make_set(DestinationIP), ModelMatchCount=sum(EventCount), MaxSeverity=max(toint(LogSeverity)) by SourceHostName\n| where ModelMatchCount > 1000 and MaxSeverity > 2\n| extend SeverityName=iff(MaxSeverity == 0, \"Informational\", iff(MaxSeverity < 5, \"Low\", iff(MaxSeverity < 8, \"Medium\", \"High\")))\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [],
+        "techniques": [],
+        "alertRuleTemplateName": "90b7ac11-dd6c-4ba1-a99b-737061873859",
+        "templateVersion": "1.0.2",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": true,
+            "lookbackDuration": "P3D",
+            "matchingMethod": "Selected",
+            "groupByEntities": [
+              "Host"
+            ],
+            "groupByAlertDetails": [],
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/d5e012c2-29ba-4a02-a813-37b928aafe2d', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Awake Security - High Severity Matches By Device",
+        "description": "This query searches for devices with high severity event(s).",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceVendor == \"Arista Networks\" and DeviceProduct == \"Awake Security\" and toint(LogSeverity) > 6\n| summarize StartTime=min(TimeGenerated), EndTime=max(TimeGenerated), Models=make_set(Activity), ASPMatchURLs=make_set(DeviceCustomString2), SourceIPs=make_set(SourceIP),\n  DestinationIPs=make_set(DestinationIP), ModelMatchCount=sum(EventCount), MaxSeverity=max(todecimal  (LogSeverity)) by SourceHostName\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [],
+        "techniques": [],
+        "alertRuleTemplateName": "d5e012c2-29ba-4a02-a813-37b928aafe2d",
+        "templateVersion": "1.0.2",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": true,
+            "lookbackDuration": "P3D",
+            "matchingMethod": "Selected",
+            "groupByEntities": [
+              "Host"
+            ],
+            "groupByAlertDetails": [],
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/dfa3ec92-bdae-410f-b675-fe1814e4d43e', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Awake Security - Model With Multiple Destinations",
+        "description": "This query searches for devices with multiple possibly malicious destinations.",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "CommonSecurityLog | where DeviceVendor == \"Arista Networks\" and DeviceProduct == \"Awake Security\"\n| summarize StartTime=min(TimeGenerated), EndTime=max(TimeGenerated), Models=make_set(Activity), ASPMatchURLs=make_set(DeviceCustomString2), SourceIPs=make_set(SourceIP),\n  DestinationIPs=make_set(DestinationIP), ModelMatchCount=sum(EventCount), MaxSeverity=max(toint(LogSeverity)) by SourceHostName\n| where array_length(DestinationIPs) > 1\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [],
+        "techniques": [],
+        "alertRuleTemplateName": "dfa3ec92-bdae-410f-b675-fe1814e4d43e",
+        "templateVersion": "1.0.2",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": true,
+            "lookbackDuration": "P3D",
+            "matchingMethod": "Selected",
+            "groupByEntities": [
+              "Host"
+            ],
+            "groupByAlertDetails": [],
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/79f29feb-6a9d-4cdf-baaa-2daf480a5da1', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Cisco ASA - average attack detection rate increase",
+        "description": "'This will help you determine if Cisco ASA devices are under heavier attack than normal over the last hour versus the previous 6 hours based on DeviceEventClassID 733100\nReferences: https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog/syslogs9.html\nDetails on how to further troubleshoot/investigate: https://www.cisco.com/c/en/us/support/docs/security/asa-5500-x-series-next-generation-firewalls/113685-asa-threat-detection.html'\n",
+        "severity": "Low",
+        "enabled": true,
+        "query": "let timeframe = 1h;\nlet last1h = CommonSecurityLog\n| where TimeGenerated >= ago(timeframe)\n| where isempty(CommunicationDirection)\n| where DeviceEventClassID == \"733100\"\n| extend SourceOfDropRateCount = tostring(split(tostring(split(Message, \"]\")[0]),\"[ \")[1])\n| extend splitMessage = split(Message, \".\")\n| extend DropRate = tostring(split(tostring(splitMessage[0]),\"] \")[1])\n| extend CurrentBurstRate = split(tostring(split(tostring(splitMessage[1]),\"  \")[0]),\"is \")\n| extend CurrentBurstRatePerSec = toint(split(tostring(CurrentBurstRate[1]),\" \")[0])\n| extend MaxConfiguredBurstRate = toint(CurrentBurstRate[2])\n| extend CurrentAvgRate = split(tostring(split(tostring(splitMessage[1]),\"  \")[1]),\"is \")\n| extend CurrentAvgRatePerSec = toint(split(tostring(CurrentAvgRate[1]),\" \")[0])\n| extend MaxConfiguredAvgRate = toint(CurrentAvgRate[2])\n| extend CumulativeTotal = toint(split(tostring(split(tostring(splitMessage[1]),\"  \")[2]),\"is \")[1])\n| summarize last1hCumTotal = sum(CumulativeTotal), last1hAvgRatePerSec = avg(CurrentAvgRatePerSec), last1hAvgBurstRatePerSec = avg(CurrentBurstRatePerSec) by DeviceName, DeviceEventClassID, SourceIP, SourceOfDropRateCount, DropRate;\nlet prev6h = CommonSecurityLog\n| where TimeGenerated between (ago(6h) .. ago(1h))\n| where isempty(CommunicationDirection)\n| where DeviceEventClassID == \"733100\"\n| extend SourceOfDropRateCount = tostring(split(tostring(split(Message, \"]\")[0]),\"[ \")[1])\n| extend splitMessage = split(Message, \".\")\n| extend DropRate = tostring(split(tostring(splitMessage[0]),\"] \")[1])\n| extend CurrentBurstRate = split(tostring(split(tostring(splitMessage[1]),\"  \")[0]),\"is \")\n| extend prevCurrentBurstRatePerSec = toint(split(tostring(CurrentBurstRate[1]),\" \")[0])\n| extend prevMaxConfiguredBurstRate = toint(CurrentBurstRate[2])\n| extend CurrentAvgRate = split(tostring(split(tostring(splitMessage[1]),\"  \")[1]),\"is \")\n| extend prevCurrentAvgRatePerSec = toint(split(tostring(CurrentAvgRate[1]),\" \")[0])\n| extend prevMaxConfiguredAvgRate = toint(CurrentAvgRate[2])\n| extend prevCumulativeTotal = toint(split(tostring(split(tostring(splitMessage[1]),\"  \")[2]),\"is \")[1])\n| summarize StartTimeUtc = min(TimeGenerated), EndTimeUtc = max(TimeGenerated), prev6hCumTotal = sum(prevCumulativeTotal), prev6hAvgRatePerSec = avg(prevCurrentAvgRatePerSec), prev6hAvgBurstRatePerSec = avg(prevCurrentBurstRatePerSec)\nby DeviceName, DeviceEventClassID, SourceIP, SourceOfDropRateCount, DropRate;\nlast1h | join (\n  prev6h\n) on DeviceName, DeviceEventClassID, SourceIP, SourceOfDropRateCount, DropRate\n| project StartTimeUtc, EndTimeUtc, DeviceName, DeviceEventClassID, SourceIP, SourceOfDropRateCount, DropRate, last1hCumTotal, prev6hCumTotal, prev6hAvgCumTotal = prev6hCumTotal/6, last1hAvgRatePerSec, prev6hAvgRatePerSec, last1hAvgBurstRatePerSec, prev6hAvgBurstRatePerSec\n// Select only events that indicate a doubling of the expected rate in the last hour over the previous 6 hours\n| where last1hCumTotal > 2*prev6hAvgCumTotal or last1hAvgRatePerSec > 2*prev6hAvgRatePerSec or last1hAvgBurstRatePerSec > 2*prev6hAvgBurstRatePerSec\n| extend HostName = tostring(split(DeviceName, \".\")[0]), DomainIndex = toint(indexof(DeviceName, '.'))\n| extend HostNameDomain = iff(DomainIndex != -1, substring(DeviceName, DomainIndex + 1), DeviceName)\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Discovery",
+          "Impact"
+        ],
+        "techniques": [
+          "T1046",
+          "T1498"
+        ],
+        "alertRuleTemplateName": "79f29feb-6a9d-4cdf-baaa-2daf480a5da1",
+        "templateVersion": "1.0.3",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT6H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/f3a8c2d0-7b41-4e9a-9f6a-2d8a1c4e5b72', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Cisco ASA - Possible Data Exfiltration Detection",
+        "description": "'Detects potential data exfiltration when an internal source IP sends a large amount of outbound data to the internet, especially when the volume is significantly higher than its normal behavior.'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let Lookback = 1h;\nlet MinUploadBytes = 1073741824;\nlet MinUploadRatio = 95.0;\nCommonSecurityLog\n| where TimeGenerated > ago(Lookback)\n| where DeviceProduct has_any (\"ASA\")\n| where isnotempty(SourceIP) and isnotempty(DestinationIP)\n| where ipv4_is_private(SourceIP)\n| where not(ipv4_is_private(DestinationIP))\n| where DeviceAction in~ (\"allow\", \"allowed\", \"accept\", \"accepted\", \"permitted\")\n| extend SentBytesLong = tolong(SentBytes)\n| extend ReceivedBytesLong = tolong(ReceivedBytes)\n| where isnotnull(SentBytesLong)\n| summarize\n    TotalBytesSent = sum(SentBytesLong),\n    TotalBytesReceived = sum(coalesce(ReceivedBytesLong, 0)),\n    Connections = count(),\n    DestinationPorts = make_set(DestinationPort, 20),\n    Applications = make_set(ApplicationProtocol, 20),\n    FirstSeen = min(TimeGenerated),\n    LastSeen = max(TimeGenerated)\n    by SourceIP, DestinationIP\n| where TotalBytesSent >= MinUploadBytes\n| extend TotalGBSent = round(TotalBytesSent / 1024.0 / 1024.0 / 1024.0, 2)\n| extend TotalGBReceived = round(TotalBytesReceived / 1024.0 / 1024.0 / 1024.0, 2)\n| extend UploadRatio = round(todouble(TotalBytesSent) / todouble(TotalBytesSent + TotalBytesReceived) * 100, 2)\n| where UploadRatio >= MinUploadRatio\n| project\n    TimeGenerated = LastSeen,\n    SourceIP,\n    DestinationIP,\n    TotalGBSent,\n    TotalGBReceived,\n    UploadRatio,\n    Connections,\n    DestinationPorts,\n    Applications,\n    FirstSeen,\n    LastSeen\n| order by TotalGBSent desc\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Exfiltration"
+        ],
+        "techniques": [
+          "T1041",
+          "T1048"
+        ],
+        "alertRuleTemplateName": "f3a8c2d0-7b41-4e9a-9f6a-2d8a1c4e5b72",
+        "templateVersion": "1.0.1",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/795edf2d-cf3e-45b5-8452-fe6c9e6a582e', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Cisco ASA - threat detection message fired",
+        "description": "'Identifies when the Cisco ASA Threat Detection engine fired an alert based on malicious activity occurring on the network inicated by DeviceEventClassID 733101-733105\nResources: https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog/syslogs9.html\nDetails on how to further troubleshoot/investigate: https://www.cisco.com/c/en/us/support/docs/security/asa-5500-x-series-next-generation-firewalls/113685-asa-threat-detection.html'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where isempty(CommunicationDirection)\n| where DeviceEventClassID in (\"733101\",\"733102\",\"733103\",\"733104\",\"733105\")\n| extend HostName = tostring(split(DeviceName, \".\")[0]), DomainIndex = toint(indexof(DeviceName, '.'))\n| extend HostNameDomain = iff(DomainIndex != -1, substring(DeviceName, DomainIndex + 1), DeviceName)\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Discovery",
+          "Impact"
+        ],
+        "techniques": [
+          "T1046",
+          "T1498"
+        ],
+        "alertRuleTemplateName": "795edf2d-cf3e-45b5-8452-fe6c9e6a582e",
+        "templateVersion": "1.0.3",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/4396f8c3-d114-4154-9f4c-048ba522ed04', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Contrast Blocks",
+        "description": "'Creates Incidents for Blocked events sourced from the Contrast Protect agent.'\n",
+        "severity": "Low",
+        "enabled": true,
+        "query": "let extract_data=(a:string, k:string) {\n  parse_urlquery(replace(@';', @'&', a))[\"Query Parameters\"][k]\n};\n\nCommonSecurityLog \n| where DeviceVendor == \"Contrast Security\"\n| where AdditionalExtensions contains \"BLOCKED\"\n| extend DeviceProduct\n| extend SourceIP\n| extend DeviceVersion\n| extend Activity\n| extend ApplicationProtocol\n| extend RequestURL\n| extend RequestMethod\n| extend Rule = extract_data(AdditionalExtensions, 'pri')\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess",
+          "Exfiltration"
+        ],
+        "techniques": [
+          "T1566"
+        ],
+        "alertRuleTemplateName": "4396f8c3-d114-4154-9f4c-048ba522ed04",
+        "templateVersion": "1.0.2",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/e1abb6ed-be18-40fd-be58-3d3d84041daf', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Contrast Exploits",
+        "description": "'Creates Incidents for Exploit events sourced from the Contrast Protect agent.'\n",
+        "severity": "High",
+        "enabled": true,
+        "query": "let extract_data=(a:string, k:string) {\n  parse_urlquery(replace(@';', @'&', a))[\"Query Parameters\"][k]\n};\n\nCommonSecurityLog \n| where DeviceVendor == \"Contrast Security\"\n| where AdditionalExtensions contains \"EXPLOITED\"\n| extend DeviceProduct\n| extend SourceIP\n| extend DeviceVersion\n| extend Activity\n| extend ApplicationProtocol\n| extend RequestURL\n| extend RequestMethod\n| extend Rule = extract_data(AdditionalExtensions, 'pri')\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess",
+          "Exfiltration"
+        ],
+        "techniques": [
+          "T1566"
+        ],
+        "alertRuleTemplateName": "e1abb6ed-be18-40fd-be58-3d3d84041daf",
+        "templateVersion": "1.0.2",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/297596de-d9ae-4fb8-b6ff-00fc01c9462d', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Contrast Probes",
+        "description": "'Creates Incidents for Probed events sourced from the Contrast Protect agent.'\n",
+        "severity": "Informational",
+        "enabled": true,
+        "query": "let extract_data=(a:string, k:string) {\n  parse_urlquery(replace(@';', @'&', a))[\"Query Parameters\"][k]\n};\n\nCommonSecurityLog \n| where DeviceVendor == \"Contrast Security\"\n| where AdditionalExtensions contains \"PROBED\" or AdditionalExtensions contains \"INEFFECTIVE\"\n| extend DeviceProduct\n| extend SourceIP\n| extend DeviceVersion\n| extend Activity\n| extend ApplicationProtocol\n| extend RequestURL\n| extend RequestMethod\n| extend Rule = extract_data(AdditionalExtensions, 'pri')\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess",
+          "Exfiltration"
+        ],
+        "techniques": [
+          "T1566"
+        ],
+        "alertRuleTemplateName": "297596de-d9ae-4fb8-b6ff-00fc01c9462d",
+        "templateVersion": "1.0.2",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 10
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/f713404e-805c-4e0c-91fa-2c149f76a07d', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Contrast Suspicious",
+        "description": "'Creates Incidents for Suspicious events sourced from the Contrast Protect agent.'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let extract_data=(a:string, k:string) {\n  parse_urlquery(replace(@';', @'&', a))[\"Query Parameters\"][k]\n};\n\nCommonSecurityLog \n| where DeviceVendor == \"Contrast Security\"\n| where AdditionalExtensions contains \"SUSPICIOUS\"\n| extend DeviceProduct\n| extend SourceIP\n| extend DeviceVersion\n| extend Activity\n| extend ApplicationProtocol\n| extend RequestURL\n| extend RequestMethod\n| extend Rule = extract_data(AdditionalExtensions, 'pri')\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess",
+          "Exfiltration"
+        ],
+        "techniques": [
+          "T1566"
+        ],
+        "alertRuleTemplateName": "f713404e-805c-4e0c-91fa-2c149f76a07d",
+        "templateVersion": "1.0.2",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/6345c923-99eb-4a83-b11d-7af0ffa75577', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Beacon Traffic Based on Common User Agents Visiting Limited Number of Domains",
+        "description": "This query searches web proxy logs for a specific type of beaconing behavior by joining a number of sources together: \n- Traffic by actual web browsers - by looking at traffic generated by a UserAgent that looks like a browser and is used by multiple users to visit a large number of domains.\n- Users that make requests using one of these actual browsers, but only to a small set of domains, none of which are common domains.\n- The traffic is beacon-like; meaning that it occurs during many different hours of the day (i.e. periodic). \n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let timeframe = 1d; // Timeframe during which to search for beaconing behavior.\nlet lookback = 7d; // Look back period to find if browser was used for other domains by user.\nlet min_requests=50; // Minimum number of requests to consider it beacon traffic.\nlet min_hours=8; // Minimum number of different hours during which connections were made to consider it beacon traffic.\nlet trusted_user_count=10; // If visited by this many users a domain is considered 'trusted'.\nlet max_sites=3; // Maximum number of different sites visited using this user-agent.\n// Client-specific query to obtain 'browser-like' traffic from proxy logs.\nlet BrowserTraffic = (p:timespan) {\nCommonSecurityLog\n| where DeviceVendor == \"Zscaler\" and DeviceProduct == \"NSSWeblog\"\n| where TimeGenerated >ago(p)\n| project TimeGenerated, SourceUserName, DestinationHostName, RequestClientApplication\n| where (RequestClientApplication startswith \"Mozilla/\" and RequestClientApplication contains \"Gecko\")\n};\nlet CommonDomains = BrowserTraffic(timeframe)\n| summarize source_count=dcount(SourceUserName) by DestinationHostName\n| where source_count>trusted_user_count\n| project DestinationHostName;\nlet CommonUA = BrowserTraffic(timeframe)\n| summarize source_count=dcount(SourceUserName), host_count=dcount(DestinationHostName) by RequestClientApplication\n| where source_count>trusted_user_count and host_count > 100 // Normal browsers are browsers used by many people and visiting many different sites.\n| project RequestClientApplication;\n// Find browsers that are common, i.e. many users use them and they use them to visit many different sites,\n// but some users only use the browser to visit a very limited set of sites.\n// These are considered suspicious, since they might be an attacker masquerading a beacon as a legitimate browser.\nlet SuspiciousBrowers = BrowserTraffic(timeframe)\n| where RequestClientApplication in(CommonUA)\n| summarize BrowserHosts=make_set(DestinationHostName),request_count=count() by RequestClientApplication, SourceUserName\n| where array_length(BrowserHosts) <= max_sites and request_count >= min_requests\n| project RequestClientApplication, SourceUserName,BrowserHosts;\n// Just reporting on suspicious browsers gives too many false positives.\n// For example, users that have the browser open on the login screen of 1 specific application.\n// In the suspicious browsers we can search for 'beacon-like' behavior.\n// Get all browser traffic by the suspicious browsers.\nlet PotentialAlerts=SuspiciousBrowers\n| join BrowserTraffic(timeframe) on RequestClientApplication, SourceUserName\n// Find beaconing-like traffic - i.e. contacting the same host in many different hours.\n| summarize hour_count=dcount(bin(TimeGenerated,1h)), BrowserHosts=any(BrowserHosts), request_count=count() by RequestClientApplication, SourceUserName, DestinationHostName\n| where hour_count >= min_hours and request_count >= min_requests\n// Remove common domains like login.microsoft.com.\n| join kind=leftanti CommonDomains on DestinationHostName\n| summarize RareHosts=make_set(DestinationHostName), TotalRequestCount=sum(request_count), BrowserHosts=any(BrowserHosts) by RequestClientApplication, SourceUserName\n// Remove browsers that visit any common domains.\n| where array_length(RareHosts) == array_length(BrowserHosts);\n// Look back for X days to see if the browser was not used to visit more hosts.\n// This is to get rid of someone that started up the browser a long time ago, and left only a single tab open.\nPotentialAlerts\n| join BrowserTraffic(lookback) on SourceUserName, RequestClientApplication\n| summarize RareHosts=any(RareHosts),BrowserHosts1d=any(BrowserHosts),BrowserHostsLookback=make_set(DestinationHostName) by SourceUserName, RequestClientApplication\n| where array_length(RareHosts) == array_length(BrowserHostsLookback)\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071"
+        ],
+        "alertRuleTemplateName": "6345c923-99eb-4a83-b11d-7af0ffa75577",
+        "templateVersion": "1.0.1",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "P1D",
+        "queryPeriod": "P7D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "subTechniques": [
+          "T1071.001"
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/e50657d7-8bca-43ff-a647-d407fae440d6', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "GreyNoise TI Map IP Entity to CommonSecurityLog",
+        "description": "This query maps GreyNoise IP indicators of compromise (IOCs) from threat intelligence (TI), by searching for matches in CommonSecurityLog.\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let IPRegex = '[0-9]{1,3}\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}';\nlet dt_lookBack = 1h; // Look back 1 hour for CommonSecurityLog events\nlet ioc_lookBack = 14d; // Look back 14 days for threat intelligence indicators\n// Fetch threat intelligence indicators related to IP addresses\nlet IP_Indicators = ThreatIntelligenceIndicator\n  | where TimeGenerated >= ago(ioc_lookBack)\n  | summarize LatestIndicatorTime = arg_max(TimeGenerated, *) by IndicatorId\n  | where Active == true and ExpirationDateTime > now()\n  | where SourceSystem == 'GreyNoise'\n  | where isnotempty(NetworkIP) or isnotempty(EmailSourceIpAddress) or isnotempty(NetworkDestinationIP) or isnotempty(NetworkSourceIP)\n  | extend TI_ipEntity = iff(isnotempty(NetworkIP), NetworkIP, NetworkDestinationIP)\n  | extend TI_ipEntity = iff(isempty(TI_ipEntity) and isnotempty(NetworkSourceIP), NetworkSourceIP, TI_ipEntity)\n  | extend TI_ipEntity = iff(isempty(TI_ipEntity) and isnotempty(EmailSourceIpAddress), EmailSourceIpAddress, TI_ipEntity)\n  | where ipv4_is_private(TI_ipEntity) == false and  TI_ipEntity !startswith \"fe80\" and TI_ipEntity !startswith \"::\" and TI_ipEntity !startswith \"127.\";\n// Perform a join between IP indicators and CommonSecurityLog events\nIP_Indicators\n  // Use innerunique to keep performance fast and result set low, as we only need one match to indicate potential malicious activity that needs investigation\n  | join kind=innerunique (\n      CommonSecurityLog\n      | where TimeGenerated >= ago(dt_lookBack)\n      | extend MessageIP = extract(IPRegex, 0, Message)\n      | extend CS_ipEntity = iff(isnotempty(SourceIP), SourceIP, DestinationIP)\n      | extend CS_ipEntity = iff(isempty(CS_ipEntity) and isnotempty(MessageIP), MessageIP, CS_ipEntity)\n      | extend CommonSecurityLog_TimeGenerated = TimeGenerated\n  )\n  on $left.TI_ipEntity == $right.CS_ipEntity\n  // Filter out logs that occurred after the expiration of the corresponding indicator\n  | where CommonSecurityLog_TimeGenerated < ExpirationDateTime\n  // Group the results by IndicatorId and CS_ipEntity, and keep the log entry with the latest timestamp\n  | summarize CommonSecurityLog_TimeGenerated = arg_max(CommonSecurityLog_TimeGenerated, *) by IndicatorId, CS_ipEntity\n  // Select the desired output fields\n  | project timestamp = CommonSecurityLog_TimeGenerated, SourceIP, DestinationIP, MessageIP, Message, DeviceVendor, DeviceProduct, IndicatorId, ThreatType, ExpirationDateTime, ConfidenceScore, TI_ipEntity, CS_ipEntity, LogSeverity, DeviceAction, Type\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071"
+        ],
+        "alertRuleTemplateName": "e50657d7-8bca-43ff-a647-d407fae440d6",
+        "templateVersion": "1.0.2",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT4H",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/c7061f05-d0ed-40e1-862e-bc52e454e3a1', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "HoneyLabs TI Map IP Entity to CommonSecurityLog",
+        "description": "'Identifies source-IP matches in CommonSecurityLog (firewall, proxy and other CEF sources) against IP indicators from HoneyLabs honeypot telemetry. A match means a source IP that ran exploit or loader commands against HoneyLabs sensors also appeared as a source in your own logs. Only the structured SourceIP field is matched; destination IPs and IPs merely mentioned inside the free-text Message are ignored, because those are frequently unrelated and generate false positives. Indicator Confidence reflects how much evidence HoneyLabs holds (90 = 100+ observed attacks, 60 = a single sighting); raise the threshold in the query to trade coverage for precision.'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let dt_lookBack = 1h;\nlet ioc_lookBack = 14d;\nlet HoneyLabs_IPs = ThreatIntelIndicators\n  | where TimeGenerated >= ago(ioc_lookBack)\n  | where IsActive == true and ValidUntil > now()\n  | summarize LatestIndicatorTime = arg_max(TimeGenerated, *) by Id\n  | where SourceSystem startswith 'HoneyLabs'\n  | where ObservableKey == 'ipv4-addr:value'\n  | extend TI_ipEntity = tostring(ObservableValue),\n           HoneyLabsConfidence = Confidence,\n           HoneyLabsLabels = tostring(Data.labels),\n           IndicatorDescription = tostring(Data.description),\n           HoneyLabsReport = strcat('https://honeylabs.net/lookup/', tostring(ObservableValue));\nHoneyLabs_IPs\n| join kind=innerunique (\n    CommonSecurityLog\n    | where TimeGenerated >= ago(dt_lookBack)\n    | where isnotempty(SourceIP)\n    | extend CS_ipEntity = SourceIP\n    | extend CommonSecurityLog_TimeGenerated = TimeGenerated\n) on $left.TI_ipEntity == $right.CS_ipEntity\n| where CommonSecurityLog_TimeGenerated < ValidUntil\n| summarize CommonSecurityLog_TimeGenerated = arg_max(CommonSecurityLog_TimeGenerated, *) by Id, CS_ipEntity\n| project CommonSecurityLog_TimeGenerated, IndicatorDescription, Id, ValidUntil,\n  HoneyLabsConfidence, HoneyLabsLabels, HoneyLabsReport, TI_ipEntity, CS_ipEntity, LogSeverity,\n  DeviceAction, SourceIP, DestinationIP, DeviceName, SourceUserName\n| extend timestamp = CommonSecurityLog_TimeGenerated\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess",
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1190",
+          "T1071"
+        ],
+        "alertRuleTemplateName": "c7061f05-d0ed-40e1-862e-bc52e454e3a1",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/afe2a5ff-f4fe-4dee-8b6b-fd28d29d6738', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "HoneyLabs TI Map URL Entity to CommonSecurityLog",
+        "description": "'Identifies requests in CommonSecurityLog to malware loader or command-and-control URLs that HoneyLabs pulled out of payloads captured by its honeypot sensors. A hit usually means a host inside your estate reached out to attacker-controlled infrastructure, so treat it as post-compromise until proven otherwise. Indicator Confidence reflects how much evidence HoneyLabs holds (90 = 100+ observed attacks, 60 = a single sighting); raise the threshold in the query to trade coverage for precision.'\n",
+        "severity": "High",
+        "enabled": true,
+        "query": "let dt_lookBack = 1h;\nlet ioc_lookBack = 14d;\nlet HoneyLabs_URLs = ThreatIntelIndicators\n  | where TimeGenerated >= ago(ioc_lookBack)\n  | where IsActive == true and ValidUntil > now()\n  | summarize LatestIndicatorTime = arg_max(TimeGenerated, *) by Id\n  | where SourceSystem startswith 'HoneyLabs'\n  | where ObservableKey == 'url:value'\n  | extend TI_urlEntity = tostring(ObservableValue),\n           HoneyLabsConfidence = Confidence,\n           IndicatorDescription = tostring(Data.description);\nHoneyLabs_URLs\n| join kind=innerunique (\n    CommonSecurityLog\n    | where TimeGenerated >= ago(dt_lookBack)\n    | where isnotempty(RequestURL)\n    | extend CommonSecurityLog_TimeGenerated = TimeGenerated\n) on $left.TI_urlEntity == $right.RequestURL\n| where CommonSecurityLog_TimeGenerated < ValidUntil\n| summarize CommonSecurityLog_TimeGenerated = arg_max(CommonSecurityLog_TimeGenerated, *) by Id, TI_urlEntity\n| project CommonSecurityLog_TimeGenerated, IndicatorDescription, Id, ValidUntil,\n  HoneyLabsConfidence, TI_urlEntity, SourceIP, DestinationIP, DeviceName, DeviceAction,\n  SourceUserName, RequestClientApplication\n| extend timestamp = CommonSecurityLog_TimeGenerated\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl",
+          "Execution"
+        ],
+        "techniques": [
+          "T1071",
+          "T1105"
+        ],
+        "alertRuleTemplateName": "afe2a5ff-f4fe-4dee-8b6b-fd28d29d6738",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/1a7dbcf6-21a2-4255-84b2-c8dbbdca4630', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Illusive Incidents Analytic Rule",
+        "description": "'Create a Microsoft Sentinel incident upon a new Illusive alert (incident) and associate all related Illusive events to the relevant Microsoft Sentinel alert. This is done by filtering and processing Illusive Syslog messages.'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceProduct == \"illusive\"\n| extend DeviceCustomNumber2 = coalesce(column_ifexists(\"FieldDeviceCustomNumber2\", long(null)),DeviceCustomNumber2)\n| summarize arg_max(TimeGenerated, *) by DeviceCustomNumber2, AdditionalExtensions, TimeGenerated\n| extend Category = extract(@'cat=([^;]+)(\\;|$)', 1, AdditionalExtensions), HasForensics = extract(@'cs7=([^;]+)(\\;|$)', 1, AdditionalExtensions)\n| extend Category = coalesce(column_ifexists(\"DeviceEventCategory\",\"\"),Category)\t\n| where Category == \"illusive:alerts\"\n| extend IncidentId = DeviceCustomNumber2, IncidentURL = DeviceCustomString5\n| project TimeGenerated, SourceIP, SourceHostName,Computer , DeviceEventClassID ,HasForensics ,SourceUserName, Activity, DeviceAddress,  DestinationHostName, DestinationUserName, IncidentId, IncidentURL\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Persistence",
+          "PrivilegeEscalation",
+          "DefenseEvasion",
+          "CredentialAccess",
+          "LateralMovement"
+        ],
+        "techniques": [
+          "T1078",
+          "T1098",
+          "T1548",
+          "T1021"
+        ],
+        "alertRuleTemplateName": "1a7dbcf6-21a2-4255-84b2-c8dbbdca4630",
+        "templateVersion": "1.0.5",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/5b0864a9-4577-4087-b9fa-de3e14a8a999', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Infoblox - TI - CommonSecurityLog Match Found - MalwareC2",
+        "description": "'CommonSecurityLog (CEF) MalwareC2/MalwareC2DGA match found in your Infoblox TIDE Threat Intelligence. Customize query count, scheduling, responses and more. Modify data sources, types and threat properties as desired.'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let dt_lookBack = 1h;\nlet ioc_lookBack = 14d;\nlet TI = ThreatIntelligenceIndicator\n| where TimeGenerated >= ago(ioc_lookBack)\n| summarize LatestIndicatorTime = arg_max(TimeGenerated, *) by IndicatorId\n| where Active == true and ExpirationDateTime > now()  \n| where Description has_cs \"Infoblox\"\n| where Description has_cs \"MalwareC2\"\n| where isnotempty(DomainName)\n;\nlet Data = CommonSecurityLog\n| extend HitTime = TimeGenerated\n| where TimeGenerated >= ago(dt_lookBack)\n| where isnotempty(DestinationDnsDomain)\n//Remove trailing period at end of domain\n| extend DestinationDnsDomain = trim_end(@\"\\.$\", DestinationDnsDomain)\n;\nTI | join kind=innerunique Data on $left.DomainName == $right.DestinationDnsDomain\n| where HitTime >= TimeGenerated and HitTime < ExpirationDateTime\n| project LatestIndicatorTime, HitTime, DeviceEventClassID, DestinationDnsDomain, DeviceAction, SourceIP, DeviceName, SourceMACAddress, SourceUserName, AdditionalExtensions, \nAdditionalInformation, Description, ThreatType, TrafficLightProtocolLevel, Type, ConfidenceScore, ExpirationDateTime, SourceSystem, Action, IndicatorId, ExternalIndicatorId, Tags\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Impact"
+        ],
+        "techniques": [
+          "T1498",
+          "T1565"
+        ],
+        "alertRuleTemplateName": "5b0864a9-4577-4087-b9fa-de3e14a8a999",
+        "templateVersion": "1.0.3",
+        "eventGroupingSettings": {
+          "aggregationKind": "SingleAlert"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/3cf46cb9-99d5-42ee-a43c-7bd88ea394a1', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Create Incidents from IronDefense",
+        "description": "'Creates incidents based on behavioral detections from IronDefense.'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceProduct == \"IronDefense\"\n| summarize arg_max(TimeGenerated, *) by DeviceCustomString4, DeviceCustomString2\n| extend Category = coalesce(column_ifexists(\"DeviceEventCategory\",\"\"),extract(@'cat=([^;]+)(\\;|$)', 1, AdditionalExtensions))\t\n| extend Subcategory = extract(@'subcat=([^;]+)(\\;|$)', 1, AdditionalExtensions)\n| extend AlertDescription = strcat(Category, ': ', Subcategory)\n| extend Status = tostring(DeviceCustomString2)\n| extend IronVueUrl = replace(@'\\\\', @'', tostring(DeviceCustomString3))\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [],
+        "techniques": [],
+        "alertRuleTemplateName": "3cf46cb9-99d5-42ee-a43c-7bd88ea394a1",
+        "templateVersion": "1.0.1",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/bc8a262a-5db3-4ac1-8757-519ed36ed929', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Lumen TI IPAddress in CommonSecurityLog",
+        "description": "This query maps Lumen IP indicators of compromise (IOCs) from threat intelligence (TI), by searching for matches in CommonSecurityLog.\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let IPRegex = '[0-9]{1,3}\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}';\nlet dt_lookBack = 1h; // Look back 1 hour for CommonSecurityLog events\nlet ioc_lookBack = 14d; // Look back 14 days for threat intelligence indicators\n// Fetch threat intelligence indicators related to IP addresses\nlet IP_Indicators = ThreatIntelIndicators\n | where TimeGenerated >= ago(ioc_lookBack)\n | summarize LatestIndicatorTime = arg_max(TimeGenerated, *) by Id\n | where IsActive == true and ValidUntil > now()\n | where SourceSystem == 'Lumen'\n | where ObservableKey == \"ipv4-addr:value\"\n | extend TI_ipEntity = ObservableValue\n | where ipv4_is_private(TI_ipEntity) == false and TI_ipEntity !startswith \"fe80\" and TI_ipEntity !startswith \"::\" and TI_ipEntity !startswith \"127.\";\n// Perform a join between IP indicators and CommonSecurityLog events\nIP_Indicators\n | join kind=innerunique (\n     CommonSecurityLog\n     | where TimeGenerated >= ago(dt_lookBack)\n     | extend MessageIP = extract(IPRegex, 0, Message)\n     | extend CS_ipEntity = iff(isnotempty(SourceIP), SourceIP, DestinationIP)\n     | extend CS_ipEntity = iff(isempty(CS_ipEntity) and isnotempty(MessageIP), MessageIP, CS_ipEntity)\n     | extend CommonSecurityLog_TimeGenerated = TimeGenerated\n )\n on $left.TI_ipEntity == $right.CS_ipEntity\n | where CommonSecurityLog_TimeGenerated < ValidUntil\n | summarize CommonSecurityLog_TimeGenerated = arg_max(CommonSecurityLog_TimeGenerated, *) by Id, CS_ipEntity\n | project timestamp = CommonSecurityLog_TimeGenerated, SourceIP, DestinationIP, MessageIP, Message, DeviceVendor, DeviceProduct, Id, Tags, ValidUntil, Confidence, TI_ipEntity, CS_ipEntity, LogSeverity, DeviceAction, Type\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": true,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071"
+        ],
+        "alertRuleTemplateName": "bc8a262a-5db3-4ac1-8757-519ed36ed929",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT4H",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/6c3a1258-bcdd-4fcd-b753-1a9bc826ce12', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Possible Phishing with CSL and Network Sessions",
+        "description": "'This query looks for malicious URL clicks in phishing email recognized by MDO in correlation with CommonSecurityLogs(CSL) & NetworkSession events. \nIf your workspace doesnt have one of the many data sources required for ASIM it may give informational error which can be safely ignored.'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "//SuspiciousUrlClicked\nAlertEvidence\n| where ServiceSource =~ \"Microsoft Defender for Office 365\"\n| where EntityType =~ \"Url\"\n| project AlertId, RemoteUrl\n| join kind=inner (\nAlertEvidence\n| where ServiceSource =~ \"Microsoft Defender for Office 365\"\n| where EntityType =~ \"MailMessage\"\n| project AlertId, NetworkMessageId\n)\non AlertId\n| distinct RemoteUrl, NetworkMessageId\n| join EmailEvents on NetworkMessageId\n| distinct RemoteUrl, NetworkMessageId, RecipientEmailAddress, RecipientObjectId\n| join kind = inner IdentityInfo on $left.RecipientObjectId  == $right.AccountObjectId\n| distinct RemoteUrl, NetworkMessageId, RecipientEmailAddress , RecipientObjectId, AccountSID\n| join kind = inner  \n(DeviceEvents\n| where ActionType =~ \"BrowserLaunchedToOpenUrl\"| where isnotempty(RemoteUrl)\n| project  UrlClickedByUserSid = RemoteUrl,\nInitiatingProcessAccountSid, DeviceName, DeviceId, InitiatingProcessFileName,\nInitiatingProcessAccountUpn, InitiatingProcessAccountName, InitiatingProcessAccountDomain\n)\non $left.AccountSID == $right.InitiatingProcessAccountSid and $left.RemoteUrl == $right.UrlClickedByUserSid\n| distinct  RemoteUrl, NetworkMessageId, RecipientEmailAddress, RecipientObjectId,\n AccountSID, UrlClickedByUserSid, DeviceName, DeviceId, InitiatingProcessFileName,\n InitiatingProcessAccountUpn, InitiatingProcessAccountName, InitiatingProcessAccountDomain\n|  join kind=inner\n(\n//Suspicious url clicked found in common security logs\nCommonSecurityLog\n| project TimeGenerated, DeviceVendor, DeviceProduct, DeviceAction, DestinationDnsDomain, DestinationIP, RequestURL, SourceIP, SourceHostName, RequestClientApplication\n) on $left.RemoteUrl== $right.RequestURL\n|  join kind=inner\n(\n//Find the relevant network sessions\n_Im_NetworkSession\n| where isnotempty(DstIpAddr)\n| where not(ipv4_is_private(DstIpAddr))\n| project TimeGenerated, SrcIpAddr, SrcPortNumber, DstIpAddr, DstPortNumber, DstBytes, SrcBytes\n) on  $left.DestinationIP == $right.DstIpAddr //The relevant network session being projected \n| summarize count() by TimeGenerated, RecipientEmailAddress, UrlClickedByUserSid, InitiatingProcessAccountUpn, InitiatingProcessAccountName, InitiatingProcessAccountDomain,\nDeviceName, InitiatingProcessFileName, DeviceProduct, DeviceAction, SourceIP, DestinationIP, RequestClientApplication\n| extend HostName = tostring(split(DeviceName, \".\")[0]), DomainIndex = toint(indexof(DeviceName, '.'))\n| extend HostNameDomain = iff(DomainIndex != -1, substring(DeviceName, DomainIndex + 1), DeviceName)\n| extend RecipientEmailName = tostring(split(RecipientEmailAddress,'@',0)[0]), RecipientEmailUPNSuffix = tostring(split(RecipientEmailAddress,'@',1)[0])\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess",
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1566",
+          "T1102"
+        ],
+        "alertRuleTemplateName": "6c3a1258-bcdd-4fcd-b753-1a9bc826ce12",
+        "templateVersion": "1.1.2",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "P1D",
+        "queryPeriod": "P1D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/01f64465-b1ef-41ea-a7f5-31553a11ad43', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Network endpoint to host executable correlation",
+        "description": "'Correlates blocked URLs hosting [malicious] executables with host endpoint data to identify potential instances of executables of the same name having been recently run.\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let endpointData = \n(union isfuzzy=true\n(SecurityEvent\n  | where EventID == 4688\n  | extend shortFileName = tolower(tostring(split(NewProcessName, '\\\\')[-1]))\n  ),\n  (WindowsEvent\n  | where EventID == 4688\n  | extend  NewProcessName = tostring(EventData.NewProcessName)\n  | extend shortFileName = tolower(tostring(split(NewProcessName, '\\\\')[-1]))\n  | extend TargetUserName = tostring(EventData.TargetUserName)\n  ));\n// Correlate suspect executables seen in TrendMicro rule updates with similar activity on endpoints\nCommonSecurityLog\n| where DeviceVendor =~ \"Trend Micro\"\n| where Activity =~ \"Deny List updated\" \n| where RequestURL endswith \".exe\"\n| project TimeGenerated, Activity , RequestURL , SourceIP, DestinationIP\n| extend suspectExeName = tolower(tostring(split(RequestURL, '/')[-1]))\n| join kind=innerunique (endpointData) on $left.suspectExeName == $right.shortFileName \n| extend HostName = tostring(split(Computer, '.', 0)[0]), DnsDomain = tostring(strcat_array(array_slice(split(Computer, '.'), 1, -1), '.'))\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Execution"
+        ],
+        "techniques": [
+          "T1204"
+        ],
+        "alertRuleTemplateName": "01f64465-b1ef-41ea-a7f5-31553a11ad43",
+        "templateVersion": "1.1.6",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "P1D",
+        "queryPeriod": "P1D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/2be4ef67-a93f-4d8a-981a-88158cb73abd', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Microsoft COVID-19 file hash indicator matches",
+        "description": "'Identifies a match in CommonSecurityLog Event data from any FileHash published in the Microsoft COVID-19 Threat Intel Feed - as described at https://www.microsoft.com/security/blog/2020/05/14/open-sourcing-covid-threat-intelligence/'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let dt_lookBack = 1h;\nlet covidIndicators = (externaldata(TimeGenerated:datetime, FileHashValue:string, FileHashType: string, TlpLevel: string, Product: string, ThreatType: string, Description: string )\n[@\"https://raw.githubusercontent.com/Azure/Azure-Sentinel/master/Sample%20Data/Feeds/Microsoft.Covid19.Indicators.csv\"] with (format=\"csv\"));\nlet fileHashIndicators = covidIndicators\n| where isnotempty(FileHashValue);\n// Handle matches against both lower case and uppercase versions of the hash:\n(fileHashIndicators | extend FileHashValue = tolower(FileHashValue)\n| union (fileHashIndicators | extend FileHashValue = toupper(FileHashValue)))\n// using innerunique to keep perf fast and result set low, we only need one match to indicate potential malicious activity that needs to be investigated\n|  join kind=innerunique (\n   CommonSecurityLog | where TimeGenerated >= ago(dt_lookBack)\n   | where isnotempty(FileHash)\n   | extend CommonSecurityLog_TimeGenerated = TimeGenerated\n   )\non $left.FileHashValue == $right.FileHash\n| summarize CommonSecurityLog_TimeGenerated = arg_max(CommonSecurityLog_TimeGenerated, *) by FileHashValue\n| project CommonSecurityLog_TimeGenerated, FileHashValue, FileHashType, Description, ThreatType,\nSourceIP, SourcePort, DestinationIP, DestinationPort, SourceUserID, SourceUserName, DeviceName, DeviceAction,\nRequestURL, DestinationUserName, DestinationUserID, ApplicationProtocol, Activity\n| extend AccountName = tostring(split(SourceUserName, \"@\")[0]), AccountUPNSuffix = tostring(split(SourceUserName, \"@\")[1])\n| extend HostName = tostring(split(DeviceName, \".\")[0]), DomainIndex = toint(indexof(DeviceName, '.'))\n| extend HostNameDomain = iff(DomainIndex != -1, substring(DeviceName, DomainIndex + 1), DeviceName)\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Execution"
+        ],
+        "techniques": [
+          "T1204"
+        ],
+        "alertRuleTemplateName": "2be4ef67-a93f-4d8a-981a-88158cb73abd",
+        "templateVersion": "1.3.6",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "subTechniques": [
+          "T1204.002"
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/5b72f527-e3f6-4a00-9908-8e4fee14da9f', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Palo Alto - possible internal to external port scanning",
+        "description": "'Identifies a list of internal Source IPs (10.x.x.x Hosts) that have triggered 10 or more non-graceful tcp server resets from one or more Destination IPs which results in an \"ApplicationProtocol = incomplete\" designation. The server resets coupled with an \"Incomplete\" ApplicationProtocol designation can be an indication of internal to external port scanning or probing attack.\nReferences: https://knowledgebase.paloaltonetworks.com/KCSArticleDetail?id=kA10g000000ClUvCAK and\nhttps://knowledgebase.paloaltonetworks.com/KCSArticleDetail?id=kA10g000000ClTaCAK'\n",
+        "severity": "Low",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where isnotempty(DestinationPort) and DeviceAction !in (\"reset-both\", \"deny\")\n// filter out common usage ports. Add ports that are legitimate for your environment\n| where DestinationPort !in (\"443\", \"53\", \"389\", \"80\", \"0\", \"880\", \"8888\", \"8080\")\n| where ApplicationProtocol == \"incomplete\"\n// filter out IANA ephemeral or negotiated ports as per https://en.wikipedia.org/wiki/Ephemeral_port\n| where DestinationPort !between (toint(49512) .. toint(65535))\n| where Computer != \"\"\n| where ipv4_is_private(DestinationIP) == false\n| extend Reason = coalesce(\n                              column_ifexists(\"Reason\", \"\"),\n                              extract(\"reason=(.+?)(;|$)\", 1, AdditionalExtensions),\n                              \"\"\n                          )\n// Filter out any graceful reset reasons of AGED OUT which occurs when a TCP session closes with a FIN due to aging out.\n| where Reason !has \"aged-out\"\n// Filter out any TCP FIN which occurs when a TCP FIN is used to gracefully close half or both sides of a connection.\n| where Reason !has \"tcp-fin\"\n// Uncomment one of the following where clauses to trigger on specific TCP reset reasons\n// See Palo Alto article for details - https://knowledgebase.paloaltonetworks.com/KCSArticleDetail?id=kA10g000000ClUvCAK\n// TCP RST-server - Occurs when the server sends a TCP reset to the client\n// | where AdditionalExtensions has \"reason=tcp-rst-from-server\"\n// TCP RST-client - Occurs when the client sends a TCP reset to the server\n// | where AdditionalExtensions has \"reason=tcp-rst-from-client\"\n// Already performed\n//| extend reason = tostring(split(AdditionalExtensions, \";\")[3])\n| summarize StartTimeUtc = min(TimeGenerated), EndTimeUtc = max(TimeGenerated), count() by DeviceName, SourceUserID, SourceIP, ApplicationProtocol, Reason, DestinationPort, Protocol, DeviceVendor, DeviceProduct, DeviceAction, DestinationIP\n| where count_ >= 10\n| summarize StartTimeUtc = min(StartTimeUtc), EndTimeUtc = max(EndTimeUtc), makeset(DestinationIP), totalcount = sum(count_) by DeviceName, SourceUserID, SourceIP, ApplicationProtocol, Reason, DestinationPort, Protocol, DeviceVendor, DeviceProduct, DeviceAction\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Discovery"
+        ],
+        "techniques": [
+          "T1046"
+        ],
+        "alertRuleTemplateName": "5b72f527-e3f6-4a00-9908-8e4fee14da9f",
+        "templateVersion": "1.0.8",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/4d61bb9a-7f6d-45b1-ac0e-517e2a92f6fd', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Palo Alto - possible nmap scan on with top 100 option",
+        "description": "'Detect possible execution of Nmap top 100 option. This detection will detect scanning of 90% of Top 100 port of NMAP in less than 2 minutes. Unusual port only access through a scan are present in this list which is a good indicator of reconnaissance tactics. Whitelisting of Company scanners is required with implementation of the rule. Ref : https://nmap.org/book/performance-port-selection.html'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where ipv4_is_private(SourceIP)\n| where DestinationPort in (7, 9, 13, 21, 22, 23, 25, 26, 37, 79, 81, 88, 106, 110, 111, 119, 135, 139, 143, 144, 179, 199, 389, 427, 444, 445, 465, 513, 514, 515, 543, 544, 548, 554, 587, 631, 646, 873, 990, 993, 995, 1025, 1026, 1027, 1028, 1029, 1110, 1433, 1720, 1723, 1755, 1900, 2000, 2001, 2049, 2121, 2717, 3000, 3128, 3306, 3389, 3986, 4899, 5000, 5009, 5051, 5060, 5101, 5190, 5357, 5432, 5631, 5666, 5800, 5900, 6000, 6001, 6646, 7070, 8000, 8008, 8009, 8080, 8081, 8443, 8888, 9100, 9999, 10000, 32768, 49152, 49153, 49154, 49155, 49156, 49157)\n| summarize\n    dcount(DestinationPort),\n    make_set(DestinationPort),\n    make_set(ApplicationProtocol),\n    make_set(Activity),\n    make_set(SourcePort),\n    StartTime = min(TimeGenerated),\n    EndTime = max(TimeGenerated)\n    by SourceIP, DestinationIP, Computer, bin(TimeGenerated, 2m)\n| where dcount_DestinationPort > 90\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Reconnaissance"
+        ],
+        "techniques": [
+          "T1595"
+        ],
+        "alertRuleTemplateName": "4d61bb9a-7f6d-45b1-ac0e-517e2a92f6fd",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/f0be259a-34ac-4946-aa15-ca2b115d5feb', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Palo Alto - potential beaconing detected",
+        "description": "'Identifies beaconing patterns from Palo Alto Network traffic logs based on recurrent timedelta patterns.\nThe query leverages various KQL functions to calculate time deltas and then compares it with total events observed in a day to find percentage of beaconing.\nThis outbound beaconing pattern to untrusted public networks should be investigated for any malware callbacks or data exfiltration attempts.\nReference Blog:\nhttps://medium.com/@HuntOperator/detect-beaconing-with-flare-elastic-stack-and-intrusion-detection-systems-110dc74e0c56\nhttps://techcommunity.microsoft.com/t5/microsoft-sentinel-blog/detect-network-beaconing-via-intra-request-time-delta-patterns/ba-p/779586'\n",
+        "severity": "Low",
+        "enabled": true,
+        "query": "let starttime = 2d;\nlet endtime = 1d;\nlet TimeDeltaThreshold = 25;\nlet TotalEventsThreshold = 30;\nlet MostFrequentTimeDeltaThreshold = 25;\nlet PercentBeaconThreshold = 80;\nCommonSecurityLog\n| where DeviceVendor == \"Palo Alto Networks\" and Activity == \"TRAFFIC\"\n| where TimeGenerated between (startofday(ago(starttime))..startofday(ago(endtime)))\n| where ipv4_is_private(DestinationIP)== false\n| project TimeGenerated, DeviceName, SourceUserID, SourceIP, SourcePort, DestinationIP, DestinationPort, ReceivedBytes, SentBytes\n| sort by SourceIP asc,TimeGenerated asc, DestinationIP asc, DestinationPort asc\n| serialize\n| extend nextTimeGenerated = next(TimeGenerated, 1), nextSourceIP = next(SourceIP, 1)\n| extend TimeDeltainSeconds = datetime_diff('second',nextTimeGenerated,TimeGenerated)\n| where SourceIP == nextSourceIP\n//Whitelisting criteria/ threshold criteria\n| where TimeDeltainSeconds > TimeDeltaThreshold\n| summarize count(), sum(ReceivedBytes), sum(SentBytes)\nby TimeDeltainSeconds, bin(TimeGenerated, 1h), DeviceName, SourceUserID, SourceIP, DestinationIP, DestinationPort\n| summarize (MostFrequentTimeDeltaCount, MostFrequentTimeDeltainSeconds) = arg_max(count_, TimeDeltainSeconds), TotalEvents=sum(count_), TotalSentBytes = sum(sum_SentBytes), TotalReceivedBytes = sum(sum_ReceivedBytes)\nby bin(TimeGenerated, 1h), DeviceName, SourceUserID, SourceIP, DestinationIP, DestinationPort\n| where TotalEvents > TotalEventsThreshold and MostFrequentTimeDeltaCount > MostFrequentTimeDeltaThreshold\n| extend BeaconPercent = MostFrequentTimeDeltaCount/toreal(TotalEvents) * 100\n| where BeaconPercent > PercentBeaconThreshold\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071",
+          "T1571"
+        ],
+        "alertRuleTemplateName": "f0be259a-34ac-4946-aa15-ca2b115d5feb",
+        "templateVersion": "1.0.7",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "P1D",
+        "queryPeriod": "P2D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/89a86f70-615f-4a79-9621-6f68c50f365f', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Palo Alto Threat signatures from Unusual IP addresses",
+        "description": "'Identifies Palo Alto Threat signatures from unusual IP addresses which are not historically seen. \nThis detection is also leveraged and required for MDE and PAN Fusion scenario\nhttps://docs.microsoft.com/Azure/sentinel/fusion-scenario-reference#network-request-to-tor-anonymization-service-followed-by-anomalous-traffic-flagged-by-palo-alto-networks-firewall'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let starttime = 7d;\nlet endtime = 1d;\nlet timeframe = 1h;\nlet HistThreshold = 25; \nlet CurrThreshold = 10; \nlet HistoricalThreats = CommonSecurityLog\n| where isnotempty(SourceIP)\n| where TimeGenerated between (startofday(ago(starttime))..startofday(ago(endtime)))\n| where DeviceVendor =~ \"Palo Alto Networks\"\n| where Activity =~ \"THREAT\" and SimplifiedDeviceAction =~ \"alert\" \n| where DeviceEventClassID in ('spyware', 'scan', 'file', 'vulnerability', 'flood', 'packet', 'virus','wildfire', 'wildfire-virus')\n| summarize TotalEvents = count(), ThreatTypes = make_set(DeviceEventClassID), DestinationIpList = make_set(DestinationIP), FirstSeen = min(TimeGenerated) , LastSeen = max(TimeGenerated) by SourceIP, DeviceAction, DeviceVendor;\nlet CurrentHourThreats =  CommonSecurityLog\n| where isnotempty(SourceIP)\n| where TimeGenerated > ago(timeframe)\n| where DeviceVendor =~ \"Palo Alto Networks\"\n| where Activity =~ \"THREAT\" and SimplifiedDeviceAction =~ \"alert\" \n| where DeviceEventClassID in ('spyware', 'scan', 'file', 'vulnerability', 'flood', 'packet', 'virus','wildfire', 'wildfire-virus')\n| summarize TotalEvents = count(), ThreatTypes = make_set(DeviceEventClassID), DestinationIpList = make_set(DestinationIP), FirstSeen = min(TimeGenerated) , LastSeen = max(TimeGenerated) by SourceIP, DeviceAction, DeviceProduct, DeviceVendor;\nCurrentHourThreats \n| where TotalEvents < CurrThreshold\n| join kind = leftanti (HistoricalThreats \n| where TotalEvents > HistThreshold) on SourceIP\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Discovery",
+          "Exfiltration",
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1046",
+          "T1030",
+          "T1071"
+        ],
+        "alertRuleTemplateName": "89a86f70-615f-4a79-9621-6f68c50f365f",
+        "templateVersion": "1.0.3",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P7D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "subTechniques": [
+          "T1071.001"
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/1eebfaf3-40e1-4bc2-9f42-049b7b8ceb60', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Critical Risks",
+        "description": "This query searches for all the exploited risks that RidgeBot identified\n",
+        "severity": "High",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceVendor == \"RidgeSecurity\"\n| where DeviceEventClassID == \"4001\"\n| order by TimeGenerated desc \n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Execution",
+          "InitialAccess",
+          "PrivilegeEscalation"
+        ],
+        "techniques": [
+          "T1189",
+          "T1059",
+          "T1053",
+          "T1548"
+        ],
+        "alertRuleTemplateName": "1eebfaf3-40e1-4bc2-9f42-049b7b8ceb60",
+        "templateVersion": "1.0.1",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/d096643d-6789-4c74-8893-dd3fc8a94069', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Vulerabilities",
+        "description": "This query searches for all the vulerabilities that RidgeBot identified\n",
+        "severity": "High",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceVendor == \"RidgeSecurity\"\n| where DeviceEventClassID startswith \"40\"\n| order by LogSeverity\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Execution",
+          "InitialAccess",
+          "PrivilegeEscalation"
+        ],
+        "techniques": [
+          "T1189",
+          "T1059",
+          "T1053",
+          "T1548"
+        ],
+        "alertRuleTemplateName": "d096643d-6789-4c74-8893-dd3fc8a94069",
+        "templateVersion": "1.0.1",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT12H",
+        "queryPeriod": "PT12H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/b49a1093-cbf6-4973-89ac-2eef98f533c6', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Threat Essentials - Time series anomaly for data size transferred to public internet",
+        "description": "'Identifies anomalous data transfer to public networks. The query leverages built-in KQL anomaly detection algorithms that detects large deviations from a baseline pattern.\nA sudden increase in data transferred to unknown public networks is an indication of data exfiltration attempts and should be investigated.\nThe higher the score, the further it is from the baseline value.\nThe output is aggregated to provide summary view of unique source IP to destination IP address and port bytes sent traffic observed in the flagged anomaly hour.\nThe source IP addresses which were sending less than bytessentperhourthreshold have been exluded whose value can be adjusted as needed .\nYou may have to run queries for individual source IP addresses from SourceIPlist to determine if anything looks suspicious'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let starttime = 14d;\nlet endtime = 1d;\nlet timeframe = 1h;\nlet scorethreshold = 5;\nlet bytessentperhourthreshold = 10;\nlet PrivateIPregex = @'^127\\.|^10\\.|^172\\.1[6-9]\\.|^172\\.2[0-9]\\.|^172\\.3[0-1]\\.|^192\\.168\\.';\nlet TimeSeriesData = (union isfuzzy=true\n(\nVMConnection\n| where TimeGenerated between (startofday(ago(starttime))..startofday(ago(endtime)))\n| where isnotempty(DestinationIp) and isnotempty(SourceIp)\n| extend DestinationIpType = iff(DestinationIp matches regex PrivateIPregex,\"private\" ,\"public\" )\n| where DestinationIpType == \"public\" | extend DeviceVendor = \"VMConnection\"\n| project TimeGenerated, BytesSent, DeviceVendor\n| make-series TotalBytesSent=sum(BytesSent) on TimeGenerated from startofday(ago(starttime)) to startofday(ago(endtime)) step timeframe by DeviceVendor\n),\n(\nCommonSecurityLog\n| where TimeGenerated between (startofday(ago(starttime))..startofday(ago(endtime)))\n| where isnotempty(DestinationIP) and isnotempty(SourceIP)\n| extend DestinationIpType = iff(DestinationIP matches regex PrivateIPregex,\"private\" ,\"public\" )\n| where DestinationIpType == \"public\"\n| project TimeGenerated, SentBytes, DeviceVendor\n| make-series TotalBytesSent=sum(SentBytes) on TimeGenerated from startofday(ago(starttime)) to startofday(ago(endtime)) step timeframe by DeviceVendor\n)\n);\n//Filter anomolies against TimeSeriesData\nlet TimeSeriesAlerts = materialize(TimeSeriesData\n| extend (anomalies, score, baseline) = series_decompose_anomalies(TotalBytesSent, scorethreshold, -1, 'linefit')\n| mv-expand TotalBytesSent to typeof(double), TimeGenerated to typeof(datetime), anomalies to typeof(double),score to typeof(double), baseline to typeof(long)\n| where anomalies > 0 | extend AnomalyHour = TimeGenerated\n| extend TotalBytesSentinMBperHour = round(((TotalBytesSent / 1024)/1024),2), baselinebytessentperHour = round(((baseline / 1024)/1024),2), score = round(score,2)\n| project DeviceVendor, AnomalyHour, TimeGenerated, TotalBytesSentinMBperHour, baselinebytessentperHour, anomalies, score);\nlet AnomalyHours = materialize(TimeSeriesAlerts  | where TimeGenerated > ago(2d) | project TimeGenerated);\n//Union of all BaseLogs aggregated per hour\nlet BaseLogs = (union isfuzzy=true\n(\nCommonSecurityLog\n| where isnotempty(DestinationIP) and isnotempty(SourceIP)\n| where TimeGenerated > ago(2d)\n| extend DateHour = bin(TimeGenerated, 1h) // create a new column and round to hour\n| where DateHour in ((AnomalyHours)) //filter the dataset to only selected anomaly hours\n| extend DestinationIpType = iff(DestinationIP matches regex PrivateIPregex,\"private\" ,\"public\" )\n| where DestinationIpType == \"public\"\n| extend SentBytesinMB = ((SentBytes / 1024)/1024), ReceivedBytesinMB = ((ReceivedBytes / 1024)/1024)\n| summarize HourlyCount = count(), TimeGeneratedMax=arg_max(TimeGenerated, *), DestinationIPList=make_set(DestinationIP, 100), DestinationPortList = make_set(DestinationPort,100), TotalSentBytesinMB = sum(SentBytesinMB), TotalReceivedBytesinMB = sum(ReceivedBytesinMB) by SourceIP, DeviceVendor, TimeGeneratedHour=bin(TimeGenerated,1h)\n| where TotalSentBytesinMB > bytessentperhourthreshold\n| sort by TimeGeneratedHour asc, TotalSentBytesinMB desc\n| extend Rank=row_number(1, prev(TimeGeneratedHour) != TimeGeneratedHour) // Ranking the dataset per Hourly Partition\n| where Rank < 10  // Selecting Top 10 records with Highest BytesSent in each Hour\n| project DeviceVendor, TimeGeneratedHour, TimeGeneratedMax, SourceIP, DestinationIPList, DestinationPortList, TotalSentBytesinMB, TotalReceivedBytesinMB, Rank\n),\n(\nVMConnection\n| where isnotempty(DestinationIp) and isnotempty(SourceIp)\n| where TimeGenerated > ago(2d)\n| extend DateHour = bin(TimeGenerated, 1h) // create a new column and round to hour\n| where DateHour in ((AnomalyHours)) //filter the dataset to only selected anomaly hours\n| extend SourceIP = SourceIp, DestinationIP = DestinationIp\n| extend DestinationIpType = iff(DestinationIp matches regex PrivateIPregex,\"private\" ,\"public\" )\n| where DestinationIpType == \"public\" | extend DeviceVendor = \"VMConnection\"\n| extend SentBytesinMB = ((BytesSent / 1024)/1024), ReceivedBytesinMB = ((BytesReceived / 1024)/1024)\n| summarize HourlyCount = count(),TimeGeneratedMax=arg_max(TimeGenerated, *), DestinationIPList=make_set(DestinationIP, 100), DestinationPortList = make_set(DestinationPort, 100), TotalSentBytesinMB = sum(SentBytesinMB),TotalReceivedBytesinMB = sum(ReceivedBytesinMB) by SourceIP, DeviceVendor, TimeGeneratedHour=bin(TimeGenerated,1h)\n| where TotalSentBytesinMB > bytessentperhourthreshold\n| sort by TimeGeneratedHour asc, TotalSentBytesinMB desc\n| extend Rank=row_number(1, prev(TimeGeneratedHour) != TimeGeneratedHour) // Ranking the dataset per Hourly Partition\n| where Rank < 10  // Selecting Top 10 records with Highest BytesSent in each Hour\n| project DeviceVendor, TimeGeneratedHour, TimeGeneratedMax, SourceIP, DestinationIPList, DestinationPortList, TotalSentBytesinMB, TotalReceivedBytesinMB, Rank\n)\n);\n// Join against base logs to retrive records associated with the hour of anomoly\nTimeSeriesAlerts\n| where TimeGenerated > ago(2d)\n| join (\n    BaseLogs | extend AnomalyHour = TimeGeneratedHour\n) on DeviceVendor, AnomalyHour | sort by score desc\n| project DeviceVendor, AnomalyHour,TimeGeneratedMax, SourceIP, DestinationIPList, DestinationPortList, TotalSentBytesinMB, TotalReceivedBytesinMB, TotalBytesSentinMBperHour, baselinebytessentperHour, score, anomalies\n| summarize EventCount = count(), StartTimeUtc= min(TimeGeneratedMax), EndTimeUtc= max(TimeGeneratedMax), SourceIPMax= arg_max(SourceIP,*), TotalBytesSentinMB = sum(TotalSentBytesinMB), TotalBytesReceivedinMB = sum(TotalReceivedBytesinMB), SourceIPList = make_set(SourceIP, 100), DestinationIPList = make_set(DestinationIPList, 100) by AnomalyHour,TotalBytesSentinMBperHour, baselinebytessentperHour, score, anomalies\n| project DeviceVendor, AnomalyHour, StartTimeUtc, EndTimeUtc, SourceIPMax, SourceIPList, DestinationIPList, DestinationPortList, TotalBytesSentinMB, TotalBytesReceivedinMB, TotalBytesSentinMBperHour, baselinebytessentperHour, score, anomalies, EventCount\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Exfiltration"
+        ],
+        "techniques": [
+          "T1030"
+        ],
+        "alertRuleTemplateName": "b49a1093-cbf6-4973-89ac-2eef98f533c6",
+        "templateVersion": "1.0.4",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "P1D",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 1
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/9ae540c9-c926-4100-8f07-1eac22596292', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Silverfort - Certifried Incident",
+        "description": "'An Active Directory domain privilege escalation vulnerability that enables a privileged user to access the Domain Controller by abusing Active Directory Certificate Service'\n",
+        "severity": "High",
+        "enabled": true,
+        "query": "CommonSecurityLog \n| where DeviceVendor has 'Silverfort'\n| where DeviceProduct has 'Admin Console'\n| where DeviceEventClassID == \"NewIncident\"\n| where Message has \"Certifried\"\n| extend UserName = parse_json(replace('^\"\"|\"\"$', '', Message))['userName']",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "PrivilegeEscalation"
+        ],
+        "techniques": [
+          "T1068"
+        ],
+        "alertRuleTemplateName": "9ae540c9-c926-4100-8f07-1eac22596292",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT15M",
+        "queryPeriod": "PT15M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/d6abed70-4043-46da-9304-a98f3446fa5f', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Silverfort - Log4Shell Incident",
+        "description": "'Vulnerability allows attackers to execute arbitrary code on affected systems by exploiting a flaw in the way Log4j handles log messages containing specially crafted strings'\n",
+        "severity": "High",
+        "enabled": true,
+        "query": "CommonSecurityLog \n| where DeviceVendor has 'Silverfort'\n| where DeviceProduct has 'Admin Console'\n| where DeviceEventClassID == \"NewIncident\"\n| where Message has \"Log4Shell\"\n| extend UserName = parse_json(replace('^\"\"|\"\"$', '', Message))['userName']",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess"
+        ],
+        "techniques": [
+          "T1190"
+        ],
+        "alertRuleTemplateName": "d6abed70-4043-46da-9304-a98f3446fa5f",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT15M",
+        "queryPeriod": "PT15M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/bdfd2c45-10a0-44e7-a90a-ba7b6bdd9ff2', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Silverfort - NoPacBreach Incident",
+        "description": "'The NoPac vulnerability involves privilege escalation, allowing attackers to gain unauthorized access and potentially take control of an entire Active Directory domain'\n",
+        "severity": "High",
+        "enabled": true,
+        "query": "CommonSecurityLog \n| where DeviceVendor has 'Silverfort'\n| where DeviceProduct has 'Admin Console'\n| where DeviceEventClassID == \"NewIncident\"\n| where Message has \"NoPacBreach\"\n| extend UserName = parse_json(replace('^\"\"|\"\"$', '', Message))['userName']",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "PrivilegeEscalation"
+        ],
+        "techniques": [
+          "T1068",
+          "T1548"
+        ],
+        "alertRuleTemplateName": "bdfd2c45-10a0-44e7-a90a-ba7b6bdd9ff2",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT15M",
+        "queryPeriod": "PT15M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/46ff357b-9e98-465b-9e45-cd52fa4a7522', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Silverfort - UserBruteForce Incident",
+        "description": "'A security weakness that allows attackers to gain unauthorized access to user accounts by systematically guessing the username and password combinations.'\n",
+        "severity": "High",
+        "enabled": true,
+        "query": "CommonSecurityLog \n| where DeviceVendor has 'Silverfort'\n| where DeviceProduct has 'Admin Console'\n| where DeviceEventClassID == \"NewIncident\"\n| where Message has \"UserBruteForce\"\n| extend UserName = parse_json(replace('^\"\"|\"\"$', '', Message))['userName']",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CredentialAccess"
+        ],
+        "techniques": [
+          "T1110"
+        ],
+        "alertRuleTemplateName": "46ff357b-9e98-465b-9e45-cd52fa4a7522",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT15M",
+        "queryPeriod": "PT15M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/3db9f99e-a459-41e0-8e02-8b332f5fcb2c', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SonicWall - Capture ATP Malicious File Detection",
+        "description": "'This rule identifies malicious file verdicts from the SonicWall Capture ATP service. This analytic rule leverages the SonicWall Firewall ASIM Network Session parser (ASimNetworkSessionSonicWallFirewall).\n  Ref: https://www.sonicwall.com/products/capture-advanced-threat-protection/\n  Ref: https://www.sonicwall.com/support/knowledge-base/how-to-view-threat-reports-capture-atp/170505384715913/'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceEventClassID == 1631\n| extend CaptureATPVerdict = extract(@'Gateway Anti-Virus Status: (.*)\\. ', 1, Message)\n| where CaptureATPVerdict == \"BAD\"\n| parse-kv AdditionalExtensions as (['susr']:string, ['fileid']:string) with (pair_delimiter=\";\", kv_delimiter=\"=\")\n| extend\n    NetworkProtocol = toupper(iff(Protocol contains \"-\" and Protocol !contains \"/\", toupper(trim_start(@\".*-\", Protocol)), toupper(trim_end(@\"/.*\", Protocol)))),\n    NetworkApplicationProtocol = tostring(toupper(trim_start(@\".*/\", Protocol)))\n| project\n    TimeGenerated,\n    DeviceModel = DeviceProduct,\n    SerialNumber = Computer,\n    SrcIpAddr = SourceIP,\n    SrcUsername = coalesce(susr, SourceUserName),\n    NetworkProtocol,\n    NetworkApplicationProtocol,\n    RequestURL,\n    File = url_decode(tostring(split(RequestURL, '/')[-1])),\n    Hash = fileid,\n    Verdict = CaptureATPVerdict\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Execution"
+        ],
+        "techniques": [
+          "T1204"
+        ],
+        "alertRuleTemplateName": "3db9f99e-a459-41e0-8e02-8b332f5fcb2c",
+        "templateVersion": "1.0.2",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/a7c3f9e2-4d18-4b6a-9f0c-2e5d8b1a6c43', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Speculus - Network traffic to or from high-risk IP indicator",
+        "description": "'Matches network events in CommonSecurityLog against high-risk Speculus IP indicators (risk score >= 75)\nreceived in the last 14 days. These IPs are associated with malicious activity such as command and control,\nbotnets, ransomware infrastructure, or brute-force campaigns.'\n",
+        "severity": "High",
+        "enabled": true,
+        "query": "let indicators = union isfuzzy=true (Speculus_Indicators_CL), (datatable(TimeGenerated:datetime, IndicatorValue:string, RiskScore:real, Modified:datetime, Activity:string, Attribution:string, Labels:dynamic, Description:string)[])\n    | where TimeGenerated > ago(14d)\n    | where isnotempty(IndicatorValue)\n    | where RiskScore >= 75\n    | summarize arg_max(Modified, *) by IndicatorValue\n    | project\n        IndicatorValue,\n        RiskScore,\n        SpeculusActivity = Activity,\n        Attribution,\n        Labels,\n        IndicatorDescription = Description;\nCommonSecurityLog\n| where TimeGenerated > ago(1h)\n| where isnotempty(SourceIP) or isnotempty(DestinationIP)\n| extend MatchIP = iff(isnotempty(DestinationIP), DestinationIP, SourceIP)\n| join kind=inner indicators on $left.MatchIP == $right.IndicatorValue\n| project\n    TimeGenerated,\n    MatchIP,\n    SourceIP,\n    DestinationIP,\n    DeviceVendor,\n    DeviceProduct,\n    RiskScore,\n    SpeculusActivity,\n    Attribution,\n    Labels,\n    IndicatorDescription\n",
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl",
+          "InitialAccess"
+        ],
+        "techniques": [
+          "T1071",
+          "T1090"
+        ],
+        "alertRuleTemplateName": "a7c3f9e2-4d18-4b6a-9f0c-2e5d8b1a6c43",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "P1D",
+            "matchingMethod": "Selected",
+            "groupByEntities": [
+              "IP"
+            ],
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/ec21493c-2684-4acd-9bc2-696dbad72426', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "TI map Domain entity to PaloAlto",
+        "description": "'Identifies a match in Palo Alto data in CommonSecurityLog table from any Domain IOC from TI'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let dt_lookBack = 1h;  // Duration to look back for recent logs (1 hour)\nlet ioc_lookBack = 14d;  // Duration to look back for recent threat intelligence indicators (14 days)\n// Create a list of top-level domains (TLDs) in our threat feed for later validation of extracted domains\nlet list_tlds = \n    ThreatIntelligenceIndicator\n    | where isnotempty(DomainName)\n    | where TimeGenerated >= ago(ioc_lookBack)\n    | summarize LatestIndicatorTime = arg_max(TimeGenerated, *) by IndicatorId\n    | where Active == true and ExpirationDateTime > now()\n    | extend DomainName = tolower(DomainName)\n    | extend parts = split(DomainName, '.')\n    | extend tld = parts[(array_length(parts)-1)]\n    | summarize count() by tostring(tld)\n    | summarize make_list(tld);\nlet Domain_Indicators = \n    ThreatIntelligenceIndicator\n    // Filter to pick up only IOC's that contain the entities we want (in this case, DomainName)\n    | where isnotempty(DomainName)\n    | where TimeGenerated >= ago(ioc_lookBack)\n    | summarize LatestIndicatorTime = arg_max(TimeGenerated, *) by IndicatorId\n    | where Active == true and ExpirationDateTime > now()\n    | extend TI_DomainEntity = DomainName;\nDomain_Indicators\n    // Join with CommonSecurityLog to find potential malicious activity\n    | join kind=innerunique (\n        CommonSecurityLog\n        | extend IngestionTime = ingestion_time()\n        | where IngestionTime > ago(dt_lookBack)\n        | where DeviceVendor =~ 'Palo Alto Networks'\n        | where DeviceEventClassID =~ 'url'\n        // Uncomment the line below to only alert on allowed connections\n        // | where DeviceAction !~ \"block-url\"\n        // Extract domain from RequestURL, if not present, extract it from AdditionalExtensions\n        | extend PA_Url = coalesce(RequestURL, \"None\")\n        | extend PA_Url = iif(isempty(PA_Url) and AdditionalExtensions !startswith \"PanOS\", extract(\"([^\\\"]+)\", 1, tolower(AdditionalExtensions)), trim('\"', PA_Url))\n        | extend PA_Url = iif(PA_Url !in~ ('None', 'http://None', 'https://None') and PA_Url !startswith \"http://\" and PA_Url !startswith \"https://\" and ApplicationProtocol !~ \"ssl\", strcat('http://', PA_Url), PA_Url)\n        | extend PA_Url = iif(PA_Url !in~ ('None', 'http://None', 'https://None') and PA_Url !startswith \"https://\" and ApplicationProtocol =~ \"ssl\", strcat('https://', PA_Url), PA_Url)\n        | extend Domain = trim(@\"\"\"\", tostring(parse_url(PA_Url).Host))\n        | where isnotempty(Domain)\n        | extend Domain = tolower(Domain)\n        | extend parts = split(Domain, '.')\n        // Split out the top-level domain (TLD) for the purpose of checking if we have any TI indicators with this TLD to match on\n        | extend tld = parts[(array_length(parts)-1)]\n        // Validate parsed domain by checking TLD against TLDs from the threat feed and drop domains where there is no chance of a match\n        | where tld in~ (list_tlds)\n        | extend CommonSecurityLog_TimeGenerated = TimeGenerated\n    ) on $left.TI_DomainEntity == $right.Domain\n    | where CommonSecurityLog_TimeGenerated < ExpirationDateTime\n    // Group the results by IndicatorId and Domain and keep only the latest CommonSecurityLog_TimeGenerated\n    | summarize CommonSecurityLog_TimeGenerated = arg_max(CommonSecurityLog_TimeGenerated, *) by IndicatorId, Domain\n    // Select the desired fields for the final result set\n    | project CommonSecurityLog_TimeGenerated, Description, ActivityGroupNames, PA_Url, Domain, IndicatorId, ThreatType, ExpirationDateTime, ConfidenceScore, DeviceAction, DestinationIP, DestinationPort, DeviceName, SourceIP, SourcePort, ApplicationProtocol, RequestMethod, Type, TI_DomainEntity\n    // Add a new field 'timestamp' for convenience, using the CommonSecurityLog_TimeGenerated as its value\n    | extend timestamp = CommonSecurityLog_TimeGenerated\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071"
+        ],
+        "alertRuleTemplateName": "ec21493c-2684-4acd-9bc2-696dbad72426",
+        "templateVersion": "1.4.2",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/dd0a6029-ecef-4507-89c4-fc355ac52111', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "TI map Domain entity to PaloAlto CommonSecurityLog",
+        "description": "Identifies a match in PaloAlto CommonSecurityLog table from any Domain IOC from TI\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let dt_lookBack = 1h; // Look back 1 hour\nlet ioc_lookBack = 14d; // Look back 14 days\n// Create a list of top-level domains (TLDs) from the threat feed data for later validation\nlet SecurityLog = materialize(\n  CommonSecurityLog\n    // Filter common security logs based on the specified time range\n    | extend IngestionTime = ingestion_time()\n    | where IngestionTime > ago(dt_lookBack)\n    | where DeviceEventClassID =~ 'url'\n    // Uncomment the line below to only alert on allowed connections\n    //| where DeviceAction !~ \"block-url\"\n    // Extract the domain from RequestURL, if not present, extract it from AdditionalExtensions\n    | extend PA_Url = column_ifexists(\"RequestURL\", \"None\")\n    | extend PA_Url = iif(isempty(PA_Url) and AdditionalExtensions !startswith \"PanOS\", extract(\"([^\\\\\\\"]+)\", 1, tolower(AdditionalExtensions)), trim('\"', PA_Url))\n    | extend PA_Url = iif(PA_Url !startswith \"http://\" and ApplicationProtocol !~ \"ssl\", strcat('http://', PA_Url), iif(PA_Url !startswith \"https://\" and ApplicationProtocol =~ \"ssl\", strcat('https://', PA_Url), PA_Url))\n    | extend Domain = trim('\"', tostring(parse_url(PA_Url).Host))\n    | where isnotempty(Domain)\n    | extend Domain = tolower(Domain)\n    | extend CommonSecurityLog_TimeGenerated = TimeGenerated\n);\nlet LogDomains = SecurityLog | distinct Domain | summarize make_list(Domain);\n// Retrieve threat intelligence indicators within the specified time range\nlet Domain_Indicators = materialize(\n    ThreatIntelligenceIndicator\n    | where isnotempty(DomainName)\n    | where TimeGenerated >= ago(ioc_lookBack)\n    | extend TI_DomainEntity = tolower(DomainName)\n    | where TI_DomainEntity in (LogDomains)\n    | summarize LatestIndicatorTime = arg_max(TimeGenerated, *) by IndicatorId\n    | where Active == true and ExpirationDateTime > now());\n// Join threat intelligence indicators with common security logs\nDomain_Indicators | join kind=innerunique (SecurityLog) on $left.TI_DomainEntity == $right.Domain\n| where CommonSecurityLog_TimeGenerated < ExpirationDateTime\n| summarize CommonSecurityLog_TimeGenerated = arg_max(CommonSecurityLog_TimeGenerated, *) by IndicatorId\n| project CommonSecurityLog_TimeGenerated, Description, ActivityGroupNames, PA_Url, Domain, IndicatorId, ThreatType, ExpirationDateTime, ConfidenceScore, DeviceAction, DestinationIP, DestinationPort, DeviceName, SourceIP, SourcePort, ApplicationProtocol, RequestMethod, Type, TI_DomainEntity\n| extend timestamp = CommonSecurityLog_TimeGenerated\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071"
+        ],
+        "alertRuleTemplateName": "dd0a6029-ecef-4507-89c4-fc355ac52111",
+        "templateVersion": "1.4.2",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/ffcd575b-3d54-482a-a6d8-d0de13b6ac63', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "TI map Email entity to PaloAlto CommonSecurityLog",
+        "description": "'Identifies a match in CommonSecurityLog table from any Email IOC from TI'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let dt_lookBack = 1h;\nlet ioc_lookBack = 14d;\nlet emailregex = @'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$';\nThreatIntelligenceIndicator\n//Filtering the table for Email related IOCs\n| where isnotempty(EmailSenderAddress)\n| where TimeGenerated >= ago(ioc_lookBack)\n| summarize LatestIndicatorTime = arg_max(TimeGenerated, *) by IndicatorId\n| where Active == true and ExpirationDateTime > now()\n// using innerunique to keep perf fast and result set low, we only need one match to indicate potential malicious activity that needs to be investigated\n| join kind=innerunique (\n    CommonSecurityLog | where TimeGenerated >= ago(dt_lookBack) and isnotempty(DestinationUserID)\n    // Filtering PAN Logs for specific event type to match relevant email entities\n    | where DeviceVendor == \"Palo Alto Networks\" and  DeviceEventClassID == \"wildfire\" and ApplicationProtocol in (\"smtp\",\"pop3\")\n    | extend DestinationUserID = tolower(DestinationUserID)\n    | where DestinationUserID matches regex emailregex\n    | extend CommonSecurityLog_TimeGenerated = TimeGenerated\n)\non $left.EmailSenderAddress == $right.DestinationUserID\n| where CommonSecurityLog_TimeGenerated < ExpirationDateTime\n| summarize CommonSecurityLog_TimeGenerated = arg_max(CommonSecurityLog_TimeGenerated, *) by IndicatorId, DestinationUserID\n| project CommonSecurityLog_TimeGenerated, Description, ActivityGroupNames, IndicatorId, ThreatType, Url, ExpirationDateTime, ConfidenceScore, EmailSenderName, EmailRecipient,\nEmailSourceDomain, EmailSourceIpAddress, EmailSubject, FileHashValue, FileHashType, DestinationUserID, DeviceEventClassID, LogSeverity, DeviceAction, SourceIP, SourcePort,\nDestinationIP, DestinationPort, Protocol, ApplicationProtocol\n| extend timestamp = CommonSecurityLog_TimeGenerated\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess"
+        ],
+        "techniques": [
+          "T1566"
+        ],
+        "alertRuleTemplateName": "ffcd575b-3d54-482a-a6d8-d0de13b6ac63",
+        "templateVersion": "1.2.6",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/5d33fc63-b83b-4913-b95e-94d13f0d379f', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "TI map File Hash to CommonSecurityLog Event",
+        "description": "'Identifies a match in CommonSecurityLog Event data from any FileHash IOC from TI'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let dt_lookBack = 1h;\nlet ioc_lookBack = 14d;\nlet fileHashIndicators = ThreatIntelligenceIndicator\n| where isnotempty(FileHashValue)\n| where TimeGenerated >= ago(ioc_lookBack)\n| summarize LatestIndicatorTime = arg_max(TimeGenerated, *) by IndicatorId\n| where Active == true and ExpirationDateTime > now();\n// Handle matches against both lower case and uppercase versions of the hash:\n(fileHashIndicators | extend  FileHashValue = tolower(FileHashValue)\n| union (fileHashIndicators | extend FileHashValue = toupper(FileHashValue)))\n// using innerunique to keep perf fast and result set low, we only need one match to indicate potential malicious activity that needs to be investigated\n|  join kind=innerunique (\n  CommonSecurityLog | where TimeGenerated >= ago(dt_lookBack)\n  | where isnotempty(FileHash)\n  | extend CommonSecurityLog_TimeGenerated = TimeGenerated\n  )\non $left.FileHashValue == $right.FileHash\n| where CommonSecurityLog_TimeGenerated < ExpirationDateTime\n| summarize CommonSecurityLog_TimeGenerated = arg_max(CommonSecurityLog_TimeGenerated, *) by IndicatorId, FileHashValue\n| project CommonSecurityLog_TimeGenerated, Description, ActivityGroupNames, IndicatorId, ThreatType, Url, ExpirationDateTime, ConfidenceScore,\nSourceIP, SourcePort, DestinationIP, DestinationPort, SourceUserID, SourceUserName, DeviceName, DeviceAction,\nRequestURL, DestinationUserName, DestinationUserID, ApplicationProtocol, Activity, FileHashValue, FileHashType\n| extend HostName = tostring(split(DeviceName, '.', 0)[0]), DnsDomain = tostring(strcat_array(array_slice(split(DeviceName, '.'), 1, -1), '.'))\n| extend Name = tostring(split(SourceUserName, '@', 0)[0]), UPNSuffix = tostring(split(SourceUserName, '@', 1)[0])\n| extend timestamp = CommonSecurityLog_TimeGenerated\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071"
+        ],
+        "alertRuleTemplateName": "5d33fc63-b83b-4913-b95e-94d13f0d379f",
+        "templateVersion": "1.3.6",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/66c81ae2-1f89-4433-be00-2fbbd9ba5ebe', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "TI Map IP Entity to CommonSecurityLog",
+        "description": "This query maps any IP indicators of compromise (IOCs) from threat intelligence (TI), by searching for matches in CommonSecurityLog.\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let IPRegex = '[0-9]{1,3}\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}';\nlet dt_lookBack = 1h; // Look back 1 hour for CommonSecurityLog events\nlet ioc_lookBack = 14d; // Look back 14 days for threat intelligence indicators\n// Fetch threat intelligence indicators related to IP addresses\nlet IP_Indicators = ThreatIntelligenceIndicator\n  | where isnotempty(NetworkIP) or isnotempty(EmailSourceIpAddress) or isnotempty(NetworkDestinationIP) or isnotempty(NetworkSourceIP)\n  | where TimeGenerated >= ago(ioc_lookBack)\n  | extend TI_ipEntity = iff(isnotempty(NetworkIP), NetworkIP, NetworkDestinationIP)\n  | extend TI_ipEntity = iff(isempty(TI_ipEntity) and isnotempty(NetworkSourceIP), NetworkSourceIP, TI_ipEntity)\n  | extend TI_ipEntity = iff(isempty(TI_ipEntity) and isnotempty(EmailSourceIpAddress), EmailSourceIpAddress, TI_ipEntity)\n  | where ipv4_is_private(TI_ipEntity) == false and  TI_ipEntity !startswith \"fe80\" and TI_ipEntity !startswith \"::\" and TI_ipEntity !startswith \"127.\"\n  | summarize LatestIndicatorTime = arg_max(TimeGenerated, *) by IndicatorId\n  | where Active == true and ExpirationDateTime > now();\n// Perform a join between IP indicators and CommonSecurityLog events\nIP_Indicators\n  // Use innerunique to keep performance fast and result set low, as we only need one match to indicate potential malicious activity that needs investigation\n  | join kind=innerunique (\n      CommonSecurityLog\n      | where TimeGenerated >= ago(dt_lookBack)\n      | extend MessageIP = extract(IPRegex, 0, Message)\n      | extend CS_ipEntity = iff((not(ipv4_is_private(SourceIP)) and isnotempty(SourceIP)), SourceIP, DestinationIP)\n      | extend CS_ipEntity = iff(isempty(CS_ipEntity) and isnotempty(MessageIP), MessageIP, CS_ipEntity)\n      | extend CommonSecurityLog_TimeGenerated = TimeGenerated\n  )\n  on $left.TI_ipEntity == $right.CS_ipEntity\n  // Filter out logs that occurred after the expiration of the corresponding indicator\n  | where CommonSecurityLog_TimeGenerated < ExpirationDateTime\n  // Group the results by IndicatorId and CS_ipEntity, and keep the log entry with the latest timestamp\n  | summarize CommonSecurityLog_TimeGenerated = arg_max(CommonSecurityLog_TimeGenerated, *) by IndicatorId, CS_ipEntity\n  // Select the desired output fields\n  | project timestamp = CommonSecurityLog_TimeGenerated, SourceIP, DestinationIP, MessageIP, Message, DeviceVendor, DeviceProduct, IndicatorId, ThreatType, ExpirationDateTime, ConfidenceScore, TI_ipEntity, CS_ipEntity, LogSeverity, DeviceAction, Type\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071"
+        ],
+        "alertRuleTemplateName": "66c81ae2-1f89-4433-be00-2fbbd9ba5ebe",
+        "templateVersion": "1.2.4",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/106813db-679e-4382-a51b-1bfc463befc3', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "TI Map URL Entity to PaloAlto Data",
+        "description": "'This query identifies any URL indicators of compromise (IOCs) from threat intelligence (TI) by searching for matches in PaloAlto Data.'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let dt_lookBack = 1h;\nlet ioc_lookBack = 14d;\nThreatIntelligenceIndicator\n// Picking up only IOC's that contain the entities we want\n| where isnotempty(Url)\n| where TimeGenerated >= ago(ioc_lookBack)\n| summarize LatestIndicatorTime = arg_max(TimeGenerated, *) by IndicatorId\n| where Active == true and ExpirationDateTime > now()\n// using innerunique to keep perf fast and result set low, we only need one match to indicate potential malicious activity that needs to be investigated\n| join kind=innerunique (\n  CommonSecurityLog\n  | extend IngestionTime = ingestion_time()\n  | where IngestionTime > ago(dt_lookBack)\n  // Select on Palo Alto logs\n  | where DeviceVendor =~ \"Palo Alto Networks\"\n  | where DeviceEventClassID =~ 'url'\n  //Uncomment the line below to only alert on allowed connections\n  //| where DeviceAction !~ \"block-url\"\n  //Select logs where URL data is populated\n  | extend PA_Url = column_ifexists(\"RequestURL\", \"None\")\n  | extend PA_Url = iif(isempty(PA_Url), extract(\"([^\\\"]+)\", 1, tolower(AdditionalExtensions)), trim('\"', PA_Url))\n  | extend PA_Url = iif(PA_Url !startswith \"http://\" and ApplicationProtocol !~ \"ssl\", strcat('http://', PA_Url), iif(PA_Url !startswith \"https://\" and ApplicationProtocol =~ \"ssl\", strcat('https://', PA_Url), PA_Url))\n  | where isnotempty(PA_Url)\n  | extend CommonSecurityLog_TimeGenerated = TimeGenerated\n) on $left.Url == $right.PA_Url\n| where CommonSecurityLog_TimeGenerated < ExpirationDateTime\n| summarize CommonSecurityLog_TimeGenerated = arg_max(CommonSecurityLog_TimeGenerated, *) by IndicatorId, PA_Url\n| project timestamp = CommonSecurityLog_TimeGenerated, Description, ActivityGroupNames, IndicatorId, ThreatType, ExpirationDateTime, ConfidenceScore, DeviceAction, SourceIP, PA_Url, DeviceName\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071"
+        ],
+        "alertRuleTemplateName": "106813db-679e-4382-a51b-1bfc463befc3",
+        "templateVersion": "1.2.5",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/094a4e6e-1a0d-4d49-9d64-cfc3b01a0be1', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "TI Map Domain entity to PaloAlto CommonSecurityLog",
+        "description": "Identifies a match in PaloAlto CommonSecurityLog table from any Domain IOC from TI\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let dt_lookBack = 1h; // Look back 1 hour\nlet ioc_lookBack = 14d; // Look back 14 days\n// Create a list of top-level domains (TLDs) from the threat feed data for later validation\nlet SecurityLog = materialize(\n  CommonSecurityLog\n    // Filter common security logs based on the specified time range\n    | extend IngestionTime = ingestion_time()\n    | where IngestionTime > ago(dt_lookBack)\n    | where DeviceEventClassID =~ 'url'\n    // Uncomment the line below to only alert on allowed connections\n    //| where DeviceAction !~ \"block-url\"\n    // Extract the domain from RequestURL, if not present, extract it from AdditionalExtensions\n    | extend PA_Url = column_ifexists(\"RequestURL\", \"None\")\n    | extend PA_Url = iif(isempty(PA_Url) and AdditionalExtensions !startswith \"PanOS\", extract(\"([^\\\\\\\"]+)\", 1, tolower(AdditionalExtensions)), trim('\"', PA_Url))\n    | extend PA_Url = iif(PA_Url !startswith \"http://\" and ApplicationProtocol !~ \"ssl\", strcat('http://', PA_Url), iif(PA_Url !startswith \"https://\" and ApplicationProtocol =~ \"ssl\", strcat('https://', PA_Url), PA_Url))\n    | extend Domain = trim('\"', tostring(parse_url(PA_Url).Host))\n    | where isnotempty(Domain)\n    | extend Domain = tolower(Domain)\n    | extend CommonSecurityLog_TimeGenerated = TimeGenerated\n);\nlet LogDomains = SecurityLog | distinct Domain | summarize make_list(Domain);\n// Retrieve threat intelligence indicators within the specified time range\nlet Domain_Indicators = materialize(\n    ThreatIntelIndicators\n    | extend IndicatorType = replace(@\"\\[|\\]|\\\"\"\", \"\", tostring(split(ObservableKey, \":\", 0)))\n    | where IndicatorType == \"domain-name\"\n    | extend DomainName = tolower(ObservableValue)\n    | where TimeGenerated >= ago(ioc_lookBack)\n    | summarize LatestIndicatorTime = arg_max(TimeGenerated, *) by Id, ObservableValue\n    | where IsActive and (ValidUntil > now() or isempty(ValidUntil)));\n// Join threat intelligence indicators with common security logs\nDomain_Indicators | join kind=innerunique (SecurityLog) on $left.DomainName == $right.Domain\n| where CommonSecurityLog_TimeGenerated < ValidUntil\n| summarize CommonSecurityLog_TimeGenerated = arg_max(CommonSecurityLog_TimeGenerated, *) by Id\n| extend Description = tostring(parse_json(Data).description), ActivityGroupNames = tostring(parse_json(Data).activitygroupnames)\n| project CommonSecurityLog_TimeGenerated, Description, ActivityGroupNames, PA_Url, Domain, Id, ValidUntil, Confidence, DeviceAction, DestinationIP, DestinationPort, DeviceName, SourceIP, SourcePort, ApplicationProtocol, RequestMethod, Type\n| extend timestamp = CommonSecurityLog_TimeGenerated\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071"
+        ],
+        "alertRuleTemplateName": "094a4e6e-1a0d-4d49-9d64-cfc3b01a0be1",
+        "templateVersion": "1.4.6",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P14D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/a36de6c3-3198-4d37-92ae-e19e36712c2e', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "vArmour AppController - SMB Realm Traversal",
+        "description": "'Detects when SMB traffic crosses Production and Non-Production Realms. Possible network share discovery or lateral tool transfer across realms'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceVendor == \"vArmour\"\n| where DeviceProduct == \"AC\"\n| where Activity == \"POLICY_VIOLATION\"\n| extend PolicyName = extract(\"(SMB_REALM_TRAVERSAL\\\\w+{.*})\", 1, DeviceCustomString1)\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Discovery",
+          "LateralMovement"
+        ],
+        "techniques": [
+          "T1135",
+          "T1570"
+        ],
+        "alertRuleTemplateName": "a36de6c3-3198-4d37-92ae-e19e36712c2e",
+        "templateVersion": "1.0.2",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/ce54b5d3-4c31-4eaf-a73e-31412270b6ab', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Vectra Account's Behaviors",
+        "description": "'This analytic rule is looking for new attacker behaviors observed by the Vectra Platform. This rule is focused on account's detections.'\n",
+        "severity": "Informational",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceVendor == \"Vectra Networks\"\n| where DeviceProduct == \"X Series\"\n| where DeviceEventClassID != \"campaigns\"\n    and DeviceEventClassID != \"hsc\"\n    and DeviceEventClassID != \"audit\"\n    and DeviceEventClassID != \"health\"\n    and DeviceEventClassID != \"asc\"\n| extend Category = coalesce(\n    column_ifexists(\"DeviceEventCategory\", \"\"), \n    extract(\"cat=(.+?)(;|$)\", 1, AdditionalExtensions), \n    \"\"\n    )\n| project-rename threat_score = FlexNumber1\n| project-rename certainty_score = FlexNumber2\n| project-rename vectra_URL = DeviceCustomString4\n| project-rename detection_name = DeviceEventClassID\n| project-rename triaged = DeviceCustomString5\n| where triaged != \"True\" and AdditionalExtensions contains \"account\"\n| extend account = extract(\"account=(.+?);\", 1, AdditionalExtensions)\n| extend upn = iff(account matches regex \":\", tostring(split(account, \":\")[1]), tostring(split(account, \":\")[0]))\n| extend name = tostring(split(upn, \"@\")[0])\n| extend upn_suffix = tostring(split(upn, \"@\")[1])\n| extend source_entity = case(isnotempty(upn), upn,\n    isnotempty(SourceHostName), SourceHostName,\n    \"UNKNWON\")\n| extend level = case(threat_score == 0 and certainty_score == 0, \"Info\",\n    threat_score < 50 and certainty_score < 50, \"Low\",\n    threat_score < 50 and certainty_score >= 50, \"Medium\", \n    threat_score >= 50 and certainty_score <= 50, \"High\", \n    threat_score >= 50 and certainty_score >= 50, \"Critical\",\n    \"UNKNOWN\")\n| extend Severity = case(level == \"Info\", \"Informational\",level == \"Critical\", \"High\", level)\n| summarize arg_max(threat_score, *) by source_entity, Activity\n| sort by TimeGenerated\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CredentialAccess",
+          "Discovery",
+          "LateralMovement",
+          "Collection",
+          "CommandAndControl",
+          "Exfiltration",
+          "Impact"
+        ],
+        "techniques": [
+          "T1003",
+          "T1087",
+          "T1021",
+          "T1119",
+          "T1071",
+          "T1041",
+          "T1499"
+        ],
+        "alertRuleTemplateName": "ce54b5d3-4c31-4eaf-a73e-31412270b6ab",
+        "templateVersion": "1.0.5",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/39e48890-2c02-487e-aa9e-3ba494061798', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Vectra AI Detect - Detections with High Severity",
+        "description": "'Create an incident for high severity malicious behavior detected by Vectra AI (Threat score superior to 7.0). \nThe Severity is a mapping with the Threat score assigned to a detection. It ranges between 0 and 10. \nThe severity_threshold variable can be adjusted as desired.' \n",
+        "severity": "High",
+        "enabled": true,
+        "query": "// Edit this variable to only keep the tactics where an incident needs to be created (Defaults are: \"COMMAND & CONTROL\", \"BOTNET ACTIVITY\", \"EXFILTRATION\", \"LATERAL MOVEMENT\", \"RECONNAISSANCE\")   \nlet configured_tactics = dynamic([\"COMMAND & CONTROL\", \"BOTNET ACTIVITY\", \"EXFILTRATION\", \"LATERAL MOVEMENT\", \"RECONNAISSANCE\"]);\n//default threshold is 7 (meaning a threat score of 70)\nlet severity_threshold = 7.0;\n//Map by default to High Severity in Sentinel\nlet Severity = \"High\";\nCommonSecurityLog\n| where DeviceVendor == \"Vectra Networks\"\n| where DeviceProduct == \"X Series\"\n| where DeviceEventClassID != \"campaigns\" and DeviceEventClassID != \"hsc\" and DeviceEventClassID != \"audit\" and DeviceEventClassID != \"health\" and DeviceEventClassID != \"asc\"\n| extend Category = coalesce(\n                          column_ifexists(\"DeviceEventCategory\", \"\"), \n                          extract(\"cat=(.+?)(;|$)\", 1, AdditionalExtensions), \n                          \"\"\n                      )\n| project-rename threat_score = FlexNumber1\n| project-rename certainty_score = FlexNumber2\n| project-rename vectra_URL = DeviceCustomString4\n| project-rename detection_name = DeviceEventClassID\n| where todecimal(LogSeverity) >= severity_threshold\n| extend Tactic = case( Category == \"COMMAND & CONTROL\", \"CommandAndControl\",\n                        Category == \"BOTNET ACTIVITY\" , \"Impact\",\n                        Category == \"EXFILTRATION\", \"Exfiltration\",\n                        Category == \"LATERAL MOVEMENT\", \"LateralMovement\",\n                        Category == \"RECONNAISSANCE\", \"Discovery\",\n                        \"UNKNOWN\")\n| extend level = case(threat_score == 0 and certainty_score == 0, \"Info\",\n    threat_score < 50 and certainty_score < 50, \"Low\",\n    threat_score < 50 and certainty_score >= 50, \"Medium\", \n    threat_score >= 50 and certainty_score <= 50, \"High\", \n    threat_score >= 50 and certainty_score >= 50, \"Critical\",\n    \"UNKNOWN\")\n| extend Severity = case(level == \"Info\", \"Informational\",level == \"Critical\", \"High\", level)\n| extend account = extract(\"account=(.+?);\", 1, AdditionalExtensions)\n| extend upn = iff(account matches regex \":\", tostring(split(account,\":\")[1]) ,tostring(split(account,\":\")[0]))\n| extend name = tostring(split(upn, \"@\")[0])\n| extend upn_suffix = tostring(split(upn, \"@\")[1])\n| extend source_entity = case( isnotempty(upn), upn,\n                               isnotempty(SourceHostName), SourceHostName,\n                               \"UNKNWON\") \n| where Category in (configured_tactics) \n| summarize arg_max(threat_score, *) by source_entity, Activity\n| sort by TimeGenerated\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CredentialAccess",
+          "Discovery",
+          "LateralMovement",
+          "Collection",
+          "CommandAndControl",
+          "Exfiltration",
+          "Impact"
+        ],
+        "techniques": [
+          "T1003",
+          "T1087",
+          "T1021",
+          "T1119",
+          "T1071",
+          "T1041",
+          "T1499"
+        ],
+        "alertRuleTemplateName": "39e48890-2c02-487e-aa9e-3ba494061798",
+        "templateVersion": "1.1.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": true,
+            "lookbackDuration": "P7D",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/a34d0338-eda0-42b5-8b93-32aae0d7a501', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Vectra AI Detect - New Campaign Detected",
+        "description": "'Identifies when a new Campaign has been detected.  This occurs when multiple Detections accross different Hosts are suspected to be part of the same Attack Campaign.'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceVendor == \"Vectra Networks\"\n| where DeviceProduct == \"X Series\"\n| where DeviceEventClassID contains \"campaign\"\n| where DeviceAction == \"START\"\n| extend reason = coalesce(\n                          column_ifexists(\"Reason\", \"\"), \n                          extract(\"reason=(.+?)($|;)\", 1, AdditionalExtensions),\n                          \"\"\n                      )\n| project-rename vectra_URL = DeviceCustomString4\n| sort by TimeGenerated\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "LateralMovement",
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1021",
+          "T1071"
+        ],
+        "alertRuleTemplateName": "a34d0338-eda0-42b5-8b93-32aae0d7a501",
+        "templateVersion": "1.2.3",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": true,
+            "lookbackDuration": "P7D",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/321f9dbd-64b7-4541-81dc-08cf7732ccb0', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Vectra AI Detect - Suspected Compromised Account",
+        "description": "'Create an incident when an Account is suspected to be compromised. \nThe higher the severity level is, the more immediate attention it requires as Vectra AI engine is more confident that this is a real threat. \nLevel of severity are: Low, Medium, High, Critical). Recommended configuration is to trigger an alert for at least High and Critical.'\n",
+        "severity": "Informational",
+        "enabled": true,
+        "query": "// Edit this variable to only keep the Severity level where an incident needs to be created.\n//Level of severity are: Low, Medium, High, Critical). Recommended configuration is to trigger an alert for at least High and Critical.'\nlet configured_level = dynamic([\"High\", \"Critical\"]);\nlet upn_has_prefix = \":\";\nCommonSecurityLog\n| where DeviceVendor == \"Vectra Networks\"\n| where DeviceProduct == \"X Series\"\n| where DeviceEventClassID == \"asc\"\n| extend saccount = extract(\"saccount=(.+?);\", 1, AdditionalExtensions)\n| extend type = iff(saccount matches regex upn_has_prefix, tostring(split(saccount,\":\")[0]) ,\"network\" ) \n| extend upn = iff(saccount matches regex upn_has_prefix, tostring(split(saccount,\":\")[1]) , saccount )\n| extend name = tostring(split(upn,\"@\")[0])\n| extend upn_suffix = tostring(split(upn,\"@\")[1])\n| project-rename threat_score = FlexNumber1\n| project-rename certainty_score = FlexNumber2\n| project-rename vectra_URL = DeviceCustomString4\n| project-rename detection_name = DeviceEventClassID\n| project-rename score_decreases = DeviceCustomString3\n| extend level = case( threat_score <  50 and certainty_score < 50, \"Low\",\n                      threat_score < 50 and certainty_score >= 50 , \"Medium\", \n                      threat_score >= 50 and certainty_score <= 50, \"High\", \n                      threat_score >= 50 and certainty_score >= 50, \"Critical\",\n                      \"UNKNOWN\")\n| extend Severity = case(level == \"Info\", \"Informational\",level == \"Critical\", \"High\", level)\n| where level in (configured_level) \n//keep only the event with the highest threat score per Host\n| summarize arg_max(threat_score, *) by saccount\n| sort by TimeGenerated\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CredentialAccess",
+          "Discovery",
+          "LateralMovement",
+          "Collection",
+          "CommandAndControl",
+          "Exfiltration",
+          "Impact"
+        ],
+        "techniques": [
+          "T1003",
+          "T1087",
+          "T1021",
+          "T1119",
+          "T1071",
+          "T1041",
+          "T1499"
+        ],
+        "alertRuleTemplateName": "321f9dbd-64b7-4541-81dc-08cf7732ccb0",
+        "templateVersion": "1.0.9",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": true,
+            "lookbackDuration": "P7D",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/60eb6cf0-3fa1-44c1-b1fe-220fbee23d63', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Vectra AI Detect - Suspected Compromised Host",
+        "description": "'Create an incident when a Host is suspected to be compromised. \nThe higher the severity level is, the more immediate attention it requires as Vectra AI engine is more confident that this is a real threat. \nLevel of severity are: Low, Medium, High, Critical). Recommended configuration is to trigger an alert for at least High and Critical.'\n",
+        "severity": "Informational",
+        "enabled": true,
+        "query": "// Edit this variable to only keep the Severity level where an incident needs to be created (Defaults are: \"High\", \"Critical\" ). Possible values are: \"Low\", \"Medium\", \"High\", \"Critical\"\nlet configured_level = dynamic([\"High\", \"Critical\"]);\nCommonSecurityLog\n| where DeviceVendor == \"Vectra Networks\"\n| where DeviceProduct == \"X Series\"\n| where DeviceEventClassID == \"hsc\"\n| project-rename threat_score = FlexNumber1\n| project-rename certainty_score = FlexNumber2\n| project-rename vectra_URL = DeviceCustomString4\n| project-rename detection_name = DeviceEventClassID\n| project-rename score_decreases = DeviceCustomString3\n| extend level = case( threat_score <  50 and certainty_score < 50, \"Low\",\n                      threat_score < 50 and certainty_score >= 50 , \"Medium\", \n                      threat_score >= 50 and certainty_score <= 50, \"High\", \n                      threat_score >= 50 and certainty_score >= 50, \"Critical\",\n                      \"UNKNOWN\")\n| extend Severity = case(level == \"Info\", \"Informational\",level == \"Critical\", \"High\", level)\n| where level in (configured_level) \n//keep only the event with the highest threat score per Host\n| summarize arg_max(TimeGenerated, *) by SourceHostName\n| sort by TimeGenerated\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CredentialAccess",
+          "Discovery",
+          "LateralMovement",
+          "Collection",
+          "CommandAndControl",
+          "Exfiltration",
+          "Impact"
+        ],
+        "techniques": [
+          "T1003",
+          "T1087",
+          "T1021",
+          "T1119",
+          "T1071",
+          "T1041",
+          "T1499"
+        ],
+        "alertRuleTemplateName": "60eb6cf0-3fa1-44c1-b1fe-220fbee23d63",
+        "templateVersion": "1.0.9",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": true,
+            "lookbackDuration": "P7D",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/6cb75f65-231f-46c4-a0b3-50ff21ee6ed3', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Vectra AI Detect - Suspicious Behaviors by Category",
+        "description": "'Create an incident for each new malicious behavior detected by Vectra Detect for a specific Category. \nBy default, it looks through all tactics. This can be modified to create incident only for a subset of tactics.'\n",
+        "severity": "Informational",
+        "enabled": true,
+        "query": "// Edit this variable to only keep the tactics where an incident needs to be created (Defaults are: \"COMMAND & CONTROL\", \"BOTNET ACTIVITY\", \"EXFILTRATION\", \"LATERAL MOVEMENT\", \"RECONNAISSANCE\")   \nlet configured_tactics = dynamic([\"COMMAND & CONTROL\", \"BOTNET ACTIVITY\", \"EXFILTRATION\", \"LATERAL MOVEMENT\", \"RECONNAISSANCE\"]);\nCommonSecurityLog\n| where DeviceVendor == \"Vectra Networks\"\n| where DeviceProduct == \"X Series\"\n| where DeviceEventClassID != \"campaigns\" and DeviceEventClassID != \"hsc\" and DeviceEventClassID != \"audit\" and DeviceEventClassID != \"health\" and DeviceEventClassID != \"asc\" \n| extend Category = coalesce(\n                          column_ifexists(\"DeviceEventCategory\", \"\"), \n                          extract(\"cat=(.+?)(;|$)\", 1, AdditionalExtensions), \n                          \"\"\n                      )\n| project-rename threat_score = FlexNumber1\n| project-rename certainty_score = FlexNumber2\n| project-rename triaged = DeviceCustomString5\n| where triaged != \"True\"\n| project-rename vectra_URL = DeviceCustomString4\n| project-rename detection_name = DeviceEventClassID\n| extend Tactic = case( Category == \"COMMAND & CONTROL\", \"CommandAndControl\",\n                        Category == \"BOTNET ACTIVITY\" , \"Impact\",\n                        Category == \"EXFILTRATION\", \"Exfiltration\",\n                        Category == \"LATERAL MOVEMENT\", \"LateralMovement\",\n                        Category == \"RECONNAISSANCE\", \"Discovery\",\n                        \"UNKNOWN\")\n| extend level = case( threat_score <  50 and certainty_score < 50, \"Low\",\n                       threat_score < 50 and certainty_score >= 50 , \"Medium\", \n                       threat_score >= 50 and certainty_score <= 50, \"High\", \n                       threat_score >= 50 and certainty_score >= 50, \"Critical\",\n                       \"UNKNOWN\")\n| extend Severity = case(level == \"Info\", \"Informational\",level == \"Critical\", \"High\", level)\n| extend account = extract(\"account=(.+?);\", 1, AdditionalExtensions)\n| extend upn = iff(account matches regex \":\", tostring(split(account,\":\")[1]) ,tostring(split(account,\":\")[0]))\n| extend name = tostring(split(upn, \"@\")[0])\n| extend upn_suffix = tostring(split(upn, \"@\")[1])\n| extend source_entity = case(level == \"Info\", \"Informational\",level == \"Critical\", \"High\", level)\n| where Category in (configured_tactics) \n| summarize arg_max(threat_score, *) by source_entity , Activity\n| sort by TimeGenerated\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CredentialAccess",
+          "Discovery",
+          "LateralMovement",
+          "Collection",
+          "CommandAndControl",
+          "Exfiltration",
+          "Impact"
+        ],
+        "techniques": [
+          "T1003",
+          "T1087",
+          "T1021",
+          "T1119",
+          "T1071",
+          "T1041",
+          "T1499"
+        ],
+        "alertRuleTemplateName": "6cb75f65-231f-46c4-a0b3-50ff21ee6ed3",
+        "templateVersion": "1.1.1",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/33e3b6da-2660-4cd7-9032-11be76db88d2', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Vectra Host's Behaviors",
+        "description": "'This analytic rule is looking for new attacker behaviors observed by the Vectra Platform. This rule is focused on host's detections.'\n",
+        "severity": "Informational",
+        "enabled": true,
+        "query": "CommonSecurityLog\n| where DeviceVendor == \"Vectra Networks\"\n| where DeviceProduct == \"X Series\"\n| where DeviceEventClassID != \"campaigns\"\n    and DeviceEventClassID != \"hsc\"\n    and DeviceEventClassID != \"audit\"\n    and DeviceEventClassID != \"health\"\n    and DeviceEventClassID != \"asc\"\n| extend Category = coalesce(\n    column_ifexists(\"DeviceEventCategory\", \"\"), \n    extract(\"cat=(.+?)(;|$)\", 1, AdditionalExtensions), \n    \"\"\n    )\n| project-rename threat_score = FlexNumber1\n| project-rename certainty_score = FlexNumber2\n| project-rename vectra_URL = DeviceCustomString4\n| project-rename detection_name = DeviceEventClassID\n| project-rename triaged = DeviceCustomString5\n| where triaged != \"True\" and AdditionalExtensions !has \"account\"\n| extend source_entity = case(isnotempty(SourceHostName), SourceHostName,\n    \"UNKNWON\")\n| extend level = case(threat_score == 0 and certainty_score == 0, \"Info\",\n    threat_score < 50 and certainty_score < 50, \"Low\",\n    threat_score < 50 and certainty_score >= 50, \"Medium\", \n    threat_score >= 50 and certainty_score <= 50, \"High\", \n    threat_score >= 50 and certainty_score >= 50, \"Critical\",\n    \"UNKNOWN\")\n| extend Severity = case(level == \"Info\", \"Informational\",level == \"Critical\", \"High\", level)\n| summarize arg_max(threat_score, *) by source_entity, Activity\n| sort by TimeGenerated\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CredentialAccess",
+          "Discovery",
+          "LateralMovement",
+          "Collection",
+          "CommandAndControl",
+          "Exfiltration",
+          "Impact"
+        ],
+        "techniques": [
+          "T1003",
+          "T1087",
+          "T1021",
+          "T1119",
+          "T1071",
+          "T1041",
+          "T1499"
+        ],
+        "alertRuleTemplateName": "33e3b6da-2660-4cd7-9032-11be76db88d2",
+        "templateVersion": "1.0.5",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/1c08a7cb-7ff4-5a37-a961-39c29f8d07bd', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Whisper Security - BGP Route Anomaly with Traffic Spike",
+        "description": "Detects BGP origin AS changes for IP prefixes correlated with network traffic volume spikes. May indicate BGP hijacking or adversary-in-the-middle attacks.\n",
+        "severity": "High",
+        "enabled": true,
+        "query": "// MITRE ATT&CK: T1557 - Adversary-in-the-Middle\n// Tactic: Collection\n// Detects BGP route origin changes correlated with traffic volume anomalies\nlet lookbackPeriod = 1d;\nlet bgpChanges = union isfuzzy=true (WhisperHistory_CL), (datatable(TimeGenerated:datetime, bgpOrigin:string, indicator:string, bgpPrefix:string, snapshotDate:datetime)[])\n    | where TimeGenerated > ago(lookbackPeriod)\n    | where isnotempty(bgpOrigin)\n    | serialize\n    | extend PreviousOrigin = prev(bgpOrigin), PreviousIndicator = prev(indicator)\n    | where indicator == PreviousIndicator\n    | where bgpOrigin != PreviousOrigin\n    | where isnotempty(PreviousOrigin)\n    | project indicator, bgpPrefix, OldOrigin = PreviousOrigin, NewOrigin = bgpOrigin, ChangeTime = snapshotDate;\nlet CommonSecurityLogSafe = union isfuzzy=true CommonSecurityLog, (datatable(TimeGenerated:datetime, DestinationIP:string, SentBytes:long, ReceivedBytes:long)[]);\nlet trafficBaseline = CommonSecurityLogSafe\n    | where TimeGenerated > ago(lookbackPeriod)\n    | where isnotempty(DestinationIP)\n    | summarize BaselineBytes = avg(SentBytes + ReceivedBytes), BaselineCount = count() by DestinationIP, bin(TimeGenerated, 1h)\n    | summarize AvgBaselineBytes = avg(BaselineBytes), AvgBaselineCount = avg(BaselineCount) by DestinationIP;\nlet recentTraffic = CommonSecurityLogSafe\n    | where TimeGenerated > ago(15m)\n    | where isnotempty(DestinationIP)\n    | summarize RecentBytes = sum(SentBytes + ReceivedBytes), RecentCount = count() by DestinationIP;\nrecentTraffic\n    | join kind=inner (trafficBaseline) on DestinationIP\n    | where RecentBytes > AvgBaselineBytes * 3 or RecentCount > AvgBaselineCount * 3\n    | extend TrafficChange = iff(AvgBaselineBytes > 0, round((RecentBytes - AvgBaselineBytes) / AvgBaselineBytes * 100, 2), 0.0)\n    | join kind=inner (bgpChanges) on $left.DestinationIP == $right.indicator\n    | project TimeGenerated = ChangeTime, IPAddress = DestinationIP, Prefix = bgpPrefix, OriginASN = NewOrigin, OldOriginASN = OldOrigin, TrafficChange, RecentBytes, AvgBaselineBytes\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Collection"
+        ],
+        "techniques": [
+          "T1557"
+        ],
+        "alertRuleTemplateName": "1c08a7cb-7ff4-5a37-a961-39c29f8d07bd",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT15M",
+        "queryPeriod": "P1D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/00682c4c-b8b5-5ef7-af33-50891b271b7b', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Whisper Security - C2 Communication Detection",
+        "description": "Detects command-and-control communication by joining CommonSecurityLog with Whisper threat intelligence data. Fires when network traffic matches a known C2 indicator with a threat score above 60.\n",
+        "severity": "High",
+        "enabled": true,
+        "query": "// MITRE ATT&CK: T1071 - Application Layer Protocol\n// Tactic: Command and Control\n// Detects C2 communication by correlating network logs with Whisper threat intel\nlet timeRange = 1h;\nlet threatThreshold = 60;\nlet c2Indicators = union isfuzzy=true (WhisperThreatIntel_CL), (datatable(TimeGenerated:datetime, indicator:string, isC2:bool, threatScore:real, threatLevel:string, feedNames:dynamic, explanation:string, lastSeen:datetime)[])\n    | where TimeGenerated > ago(timeRange)\n    | where isC2 == true\n    | where threatScore > threatThreshold\n    | project indicator, threatScore, threatLevel, feedNames, explanation, lastSeen;\nlet CommonSecurityLogSafe = union isfuzzy=true CommonSecurityLog, (datatable(TimeGenerated:datetime, DestinationIP:string, DestinationHostName:string, SourceIP:string, DeviceProduct:string, DeviceAction:string)[]);\nCommonSecurityLogSafe\n    | where TimeGenerated > ago(timeRange)\n    | where isnotempty(DestinationIP) or isnotempty(DestinationHostName)\n    | extend matchIndicator = coalesce(DestinationHostName, DestinationIP)\n    | join kind=inner (c2Indicators) on $left.matchIndicator == $right.indicator\n    | extend SourceIP = SourceIP, DestinationIP = DestinationIP, DnsDomain = DestinationHostName\n    | project TimeGenerated, SourceIP, DestinationIP, DnsDomain, DeviceProduct, DeviceAction, threatScore, threatLevel, feedNames, explanation\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071"
+        ],
+        "alertRuleTemplateName": "00682c4c-b8b5-5ef7-af33-50891b271b7b",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/f5567c93-91de-577a-b35e-c2807715493d', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Whisper Security - Tor Exit Node Communication",
+        "description": "Identifies network traffic communicating with known Tor exit nodes. While Tor usage may be legitimate in some environments, unexpected Tor communication can indicate data exfiltration, C2 tunneling, or policy violations.\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "// MITRE ATT&CK: T1090.003 - Proxy: Multi-hop Proxy\n// Tactic: Command and Control\n// Detects communication with Tor exit nodes using Whisper threat intelligence\nlet timeRange = 1d;\nlet torIndicators = union isfuzzy=true (WhisperThreatIntel_CL), (datatable(TimeGenerated:datetime, indicator:string, isTor:bool, threatScore:real, threatLevel:string, feedNames:dynamic, lastSeen:datetime)[])\n    | where TimeGenerated > ago(timeRange)\n    | where isTor == true\n    | project indicator, threatScore, threatLevel, feedNames, lastSeen;\nlet CommonSecurityLogSafe = union isfuzzy=true CommonSecurityLog, (datatable(TimeGenerated:datetime, DestinationIP:string, SourceIP:string, DeviceProduct:string, DeviceAction:string, DeviceVendor:string, Activity:string)[]);\nCommonSecurityLogSafe\n    | where TimeGenerated > ago(timeRange)\n    | where isnotempty(DestinationIP)\n    | join kind=inner (torIndicators) on $left.DestinationIP == $right.indicator\n    | extend SourceIP = SourceIP, DestinationIP = DestinationIP\n    | project TimeGenerated, SourceIP, DestinationIP, DeviceProduct, DeviceAction, DeviceVendor, Activity, threatScore, threatLevel, feedNames\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1090"
+        ],
+        "alertRuleTemplateName": "f5567c93-91de-577a-b35e-c2807715493d",
+        "templateVersion": "1.0.0",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT1H",
+        "queryPeriod": "P1D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/95543d6d-f00d-4193-a63f-4edeefb7ec36', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "[Deprecated] - Zinc Actor IOCs domains hashes IPs and useragent - October 2022",
+        "description": "'Use Microsoft's up-to-date Threat Intelligence solution from the Content Hub to replace the deprecated query with outdated IoCs. Install it from: https://learn.microsoft.com/azure/sentinel/sentinel-solutions-deploy'\n",
+        "severity": "High",
+        "enabled": true,
+        "query": "let iocs = externaldata(DateAdded:string,IoC:string,Type:string) [@\"https://raw.githubusercontent.com/Azure/Azure-Sentinel/master/Sample%20Data/Feeds/ZincOctober2022IOCs.csv\"] with (format=\"csv\", ignoreFirstRecord=True);\nlet domains = (iocs | where Type =~ \"domainname\"| project IoC);\nlet IPList = (iocs | where Type =~ \"ip\"| project IoC);\nlet sha256Hashes = (iocs | where Type =~ \"sha256\" | project IoC);\nlet useragents = (iocs | where Type =~ \"useragent\" | project IoC);\n(union isfuzzy=true\n(CommonSecurityLog\n| where DestinationHostName has_any (domains) or RequestURL has_any (domains) or Message has_any (domains) or  SourceIP has_any (IPList) or DestinationIP  has_any (IPList)\n| parse Message with * '(' DNSName ')' *\n| project TimeGenerated, Message, SourceUserID, RequestURL, DestinationHostName, Type, SourceIP, DestinationIP, DNSName\n| extend timestamp = TimeGenerated, AccountEntity = SourceUserID, UrlEntity = RequestURL , IPEntity = DestinationIP, DNSCustomEntity = DNSName\n),\n(DnsEvents\n| where Name in~ (domains) or IPAddresses has_any (IPList)\n| project TimeGenerated, Computer, IPAddresses, Name, ClientIP, Type\n| extend DNSName = Name, Host = Computer\n| extend timestamp = TimeGenerated, HostEntity = Host, DNSCustomEntity = DNSName, IPEntity = IPAddresses\n),\n(VMConnection\n| where  RemoteDnsCanonicalNames has_any (domains)  or  SourceIp has_any (IPList) or DestinationIp has_any (IPList)\n| parse RemoteDnsCanonicalNames with * '[\"' DNSName '\"]' *\n| project TimeGenerated, Computer, Direction, RemoteDnsCanonicalNames, ProcessName, SourceIp, DestinationIp, DestinationPort, DNSName,BytesSent, BytesReceived, RemoteCountry, Type\n| extend timestamp = TimeGenerated, IPEntity = DestinationIp, HostEntity = Computer, ProcessEntity = ProcessName, DNSCustomEntity = DNSName\n),\n(Event\n| where Source =~ \"Microsoft-Windows-Sysmon\"\n| where EventID == 3\n| extend EvData = parse_xml(EventData)\n| extend EventDetail = EvData.DataItem.EventData.Data\n| extend SourceIP = tostring(EventDetail.[9].[\"#text\"]), DestinationIP = tostring(EventDetail.[14].[\"#text\"]), Image = EventDetail.[4].[\"#text\"]\n| where  SourceIP has_any (IPList) or DestinationIP has_any (IPList)\n| project TimeGenerated, SourceIP, DestinationIP, Image, UserName, Computer, EventDetail, Type\n| extend timestamp = TimeGenerated, AccountEntity = UserName, ProcessEntity = tostring(split(Image, '\\\\', -1)[-1]), HostEntity = Computer , IPEntity = DestinationIP\n),  \n(DeviceNetworkEvents\n| where RemoteUrl has_any (domains) or RemoteIP has_any (IPList) or InitiatingProcessSHA256 in (sha256Hashes) \n| project TimeGenerated, ActionType, DeviceId, DeviceName, InitiatingProcessAccountDomain, InitiatingProcessAccountName, InitiatingProcessCommandLine, InitiatingProcessFolderPath, InitiatingProcessId, InitiatingProcessParentFileName, InitiatingProcessFileName, RemoteIP, RemoteUrl, LocalIP, Type\n| extend timestamp = TimeGenerated, IPEntity = RemoteIP, HostEntity = DeviceName, UrlEntity =RemoteUrl\n),\n(AzureDiagnostics\n| where ResourceType =~ \"AZUREFIREWALLS\"\n| where Category =~ \"AzureFirewallDnsProxy\"\n| project TimeGenerated,Resource, msg_s, Type\n| parse msg_s with \"DNS Request: \" ClientIP \":\" ClientPort \" - \" QueryID \" \" Request_Type \" \" Request_Class \" \" Request_Name \". \" Request_Protocol \" \" Request_Size \" \" EDNSO_DO \" \" EDNS0_Buffersize \" \" Responce_Code \" \" Responce_Flags \" \" Responce_Size \" \" Response_Duration\n| where Request_Name has_any (domains) or ClientIP has_any (IPList)\n| extend timestamp = TimeGenerated, DNSName = Request_Name, IPEntity = ClientIP\n),\n(AzureDiagnostics\n| where ResourceType =~ \"AZUREFIREWALLS\"\n| where Category =~ \"AzureFirewallApplicationRule\"\n| project TimeGenerated,Resource, msg_s\n| parse msg_s with Protocol 'request from ' SourceHost ':' SourcePort 'to ' DestinationHost ':' DestinationPort '. Action:' Action\n| where DestinationHost has_any (domains) or SourceHost has_any (IPList)\n| extend timestamp = TimeGenerated, DNSName = DestinationHost, IPEntity = SourceHost\n),\n(Event\n| where Source =~ \"Microsoft-Windows-Sysmon\"\n| where EventID == 1\n| extend EvData = parse_xml(EventData)\n| extend EventDetail = EvData.DataItem.EventData.Data\n| parse EventDetail with * 'SHA256=' SHA256 '\",' *\n| extend Image = EventDetail.[4].[\"#text\"],  CommandLine = EventDetail.[10].[\"#text\"]\n| where SHA256 has_any (sha256Hashes)\n| project TimeGenerated, EventDetail, UserName, Computer, Type, Source, SHA256, CommandLine, Image\n| extend Type = strcat(Type, \": \", Source)\n| extend timestamp = TimeGenerated, HostEntity = Computer , AccountEntity = UserName, ProcessEntity = tostring(split(Image, '\\\\', -1)[-1]), AlgorithmEntity = \"SHA256\", FileHashEntity = SHA256\n),  \n(DeviceProcessEvents\n| where  InitiatingProcessSHA256 has_any (sha256Hashes)\n| project TimeGenerated, ActionType, DeviceId, DeviceName, InitiatingProcessAccountDomain, InitiatingProcessAccountName, InitiatingProcessCommandLine, InitiatingProcessFolderPath, InitiatingProcessId, InitiatingProcessParentFileName, InitiatingProcessFileName, InitiatingProcessSHA256, FolderPath, Type\n| extend timestamp = TimeGenerated, HostEntity = DeviceName , AccountEntity = InitiatingProcessAccountName, ProcessEntity = InitiatingProcessFileName, AlgorithmEntity = \"SHA256\", FileHashEntity = InitiatingProcessSHA256\n),\n(DeviceFileEvents\n| where  InitiatingProcessSHA256 has_any (sha256Hashes)\n| project TimeGenerated, ActionType, DeviceId, DeviceName, InitiatingProcessAccountDomain, InitiatingProcessAccountName, InitiatingProcessCommandLine, InitiatingProcessFolderPath, InitiatingProcessId, InitiatingProcessParentFileName, InitiatingProcessFileName, RequestAccountName, RequestSourceIP, InitiatingProcessSHA256, FolderPath, Type\n| extend timestamp = TimeGenerated, HostEntity = DeviceName , AccountEntity = RequestAccountName, ProcessEntity = InitiatingProcessFileName, AlgorithmEntity = \"SHA256\", FileHashEntity = InitiatingProcessSHA256\n),\n(DeviceEvents\n| where  InitiatingProcessSHA256 has_any (sha256Hashes)\n| project TimeGenerated, ActionType, DeviceId, DeviceName, InitiatingProcessAccountDomain, InitiatingProcessAccountName, InitiatingProcessCommandLine, InitiatingProcessFolderPath, InitiatingProcessId, InitiatingProcessParentFileName, InitiatingProcessFileName, InitiatingProcessSHA256, FolderPath, Type\n| extend CommandLine = InitiatingProcessCommandLine\n| extend timestamp = TimeGenerated, HostEntity = DeviceName , AccountEntity = InitiatingProcessAccountName, ProcessEntity = InitiatingProcessFileName, AlgorithmEntity = \"SHA256\", FileHashEntity = InitiatingProcessSHA256\n),\n(OfficeActivity\n| where ClientIP has_any (IPList) or UserAgent has_any (useragents)\n| project TimeGenerated, UserAgent, Operation, RecordType, UserId, ClientIP, Type\n| extend timestamp = TimeGenerated, IPEntity = ClientIP, AccountEntity = UserId\n)\n)\n| extend HostName = tostring(split(HostEntity, '.', 0)[0]), DnsDomain = tostring(strcat_array(array_slice(split(HostEntity, '.'), 1, -1), '.'))\n| extend Name = tostring(split(AccountEntity, '@', 0)[0]), UPNSuffix = tostring(split(AccountEntity, '@', 1)[0])\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Persistence"
+        ],
+        "techniques": [
+          "T1546"
+        ],
+        "alertRuleTemplateName": "95543d6d-f00d-4193-a63f-4edeefb7ec36",
+        "templateVersion": "1.0.4",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "PT6H",
+        "queryPeriod": "PT6H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/010bd98c-a6be-498c-bdcd-502308c0fdae', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Discord CDN Risky File Download",
+        "description": "'Identifies callouts to Discord CDN addresses for risky file extensions. This detection will trigger when a callout for a risky file is made to a discord server that has only been seen once in your environment. Unique discord servers are identified using the server ID that is included in the request URL (DiscordServerId in query). Discord CDN has been used in multiple campaigns to download additional payloads'\n",
+        "severity": "Medium",
+        "enabled": true,
+        "query": "let connectionThreshold = 1;\nlet riskyExtensions = dynamic([\".bin\",\".exe\",\".dll\",\".bin\",\".msi\"]);\nCommonSecurityLog\n| where DeviceVendor =~ \"ZScaler\"\n| where RequestURL has_any(\"media.discordapp.net\", \"cdn.discordapp.com\")\n| where RequestURL has \"attachments\"\n| where DeviceAction !~ \"blocked\"\n| extend DiscordServerId = extract(@\"\\/attachments\\/([0-9]+)\\/\", 1, RequestURL)\n| summarize dcount(RequestURL), make_set(SourceUserName), make_set(SourceIP), make_set(RequestURL), min(TimeGenerated), max(TimeGenerated), make_set(DeviceAction) by DiscordServerId, DeviceProduct\n| where dcount_RequestURL <= connectionThreshold\n| mv-expand set_SourceUserName to typeof(string), set_RequestURL to typeof(string), set_DeviceAction to typeof(string), set_SourceIP to typeof(string)\n| summarize by DiscordServerId, DeviceProduct, dcount_RequestURL, set_SourceUserName, min_TimeGenerated, max_TimeGenerated, set_DeviceAction, set_SourceIP, set_RequestURL\n| project StartTime=min_TimeGenerated, EndTime=max_TimeGenerated, DeviceActionTaken=set_DeviceAction, DeviceProduct, SourceUser=set_SourceUserName, SourceIP=set_SourceIP, RequestURL=set_RequestURL\n| where RequestURL has_any (riskyExtensions)\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1071"
+        ],
+        "alertRuleTemplateName": "010bd98c-a6be-498c-bdcd-502308c0fdae",
+        "templateVersion": "1.0.4",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "P1D",
+        "queryPeriod": "P1D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "subTechniques": [
+          "T1071.001"
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/Microsoft.SecurityInsights/4d500e6d-c984-43a3-9f39-7edec8dcc04d', parameters('workspace'))]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Request for single resource on domain",
+        "description": "'This will look for connections to a domain where only a single file is requested, this is unusual as most modern web applications require additional recources. This type of activity is often assocaited with malware beaconing or tracking URL's delivered in emails. Developed for Zscaler but applicable to any outbound web logging.'\n",
+        "severity": "Low",
+        "enabled": true,
+        "query": "let scriptExtensions = dynamic([\".php\", \".aspx\", \".asp\", \".cfml\"]);\n//The number of URI's seen to be suspicious, higher = less likely to be suspicious\nlet uriThreshold = 1;\nCommonSecurityLog\n// Only look at connections that were allowed through the web proxy\n| where DeviceVendor =~ \"Zscaler\" and DeviceAction =~ \"Allowed\"\n// Only look where some data was exchanged.\n| where SentBytes > 0 and ReceivedBytes > 0\n// Extract the Domain\n| extend Domain = iff(countof(DestinationHostName,'.') >= 2, strcat(split(DestinationHostName,'.')[-2], '.',split(DestinationHostName,'.')[-1]), DestinationHostName)\n| extend GetData=iff(RequestURL == \"?\", 1, 0)\n| summarize StartTimeUtc = min(TimeGenerated), EndTimeUtc = max(TimeGenerated), makelist(RequestURL), makelist(DestinationIP), makelist(SourceIP), numOfConnections = count(), make_set(RequestMethod), max(GetData), max(RequestContext) by Domain\n// Determine the number of URIs that have been visited for the domain\n| extend destinationURI = arraylength(list_RequestURL)\n| where destinationURI <= uriThreshold\n| where tostring(list_RequestURL) has_any(scriptExtensions)\n//Remove matches with referer\n| where max_RequestContext == \"\"\n//Keep requests where data was trasferred either in a GET with parameters or a POST\n| where set_RequestMethod in~ (\"POST\") or max_GetData == 1\n//Defeat email click tracking, may increase FN's while decreasing FP's\n| where list_RequestURL !has \"click\" and set_RequestMethod !has \"GET\"\n| mvexpand list_RequestURL, list_DestinationIP\n| extend RequestURL = tostring(list_RequestURL), DestinationIP = tostring(list_DestinationIP), ClientIP = tostring(list_SourceIP)\n//Extend custom entitites for incidents\n| project-away list_RequestURL, list_DestinationIP, list_SourceIP, destinationURI, Domain, StartTimeUtc, EndTimeUtc, max_GetData, max_RequestContext\n",
+        "suppressionDuration": "PT5H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CommandAndControl"
+        ],
+        "techniques": [
+          "T1102",
+          "T1071"
+        ],
+        "alertRuleTemplateName": "4d500e6d-c984-43a3-9f39-7edec8dcc04d",
+        "templateVersion": "1.0.5",
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": false,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "AllEntities",
+            "groupByCustomDetails": []
+          }
+        },
+        "queryFrequency": "P1D",
+        "queryPeriod": "P1D",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0
+      }
+    }
+  ],
+  "outputs": {
+    "deployedRuleCount": {
+      "type": "int",
+      "value": 60
+    }
+  }
+}
