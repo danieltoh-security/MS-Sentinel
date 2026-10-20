@@ -1,0 +1,1391 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "title": "14 SQL audit analytics rules: 13 Managed Instance and 1 Azure SQL Database-only",
+    "description": "A single Microsoft Sentinel importable ARM template containing fourteen independent scheduled analytics rules. All fourteen import disabled.",
+    "sourceRepository": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries",
+    "sourceCommit": "44de43909fee0564e2fb532bf09fe1c2cf4dd5ce",
+    "license": "BSD 3-Clause License\r\n\r\nCopyright (c) 2024, Ashok Krishna Vemuri\r\n\r\nRedistribution and use in source and binary forms, with or without\r\nmodification, are permitted provided that the following conditions are met:\r\n\r\n1. Redistributions of source code must retain the above copyright notice, this\r\n   list of conditions and the following disclaimer.\r\n\r\n2. Redistributions in binary form must reproduce the above copyright notice,\r\n   this list of conditions and the following disclaimer in the documentation\r\n   and/or other materials provided with the distribution.\r\n\r\n3. Neither the name of the copyright holder nor the names of its\r\n   contributors may be used to endorse or promote products derived from\r\n   this software without specific prior written permission.\r\n\r\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\r\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\r\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\r\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\r\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\r\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\r\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\r\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\r\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\r\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.",
+    "importInstructions": [
+      "In the target Microsoft Sentinel workspace, open Analytics > Import and select this JSON file.",
+      "For an ARM deployment, set the workspace parameter to the Log Analytics workspace NAME, not its GUID; deploy to its resource group.",
+      "Review all disabled rules, validate the required audit action groups and event samples, tune known maintenance and service accounts, then enable selected rules.",
+      "Do not enable the loginmanager/dbmanager rule for Managed Instance; it is deliberately Azure SQL Database-only."
+    ],
+    "designNotes": [
+      "The original fourteen use cases are preserved, but their KQL is rewritten for MI scoping, robust identifiers, actor/target mappings, explicit success filtering, and short operational schedules.",
+      "Individual failure rules produce one summary alert per run. Threshold rules retain the source condition of more than five failures per ten minutes and group by resource to avoid cross-instance mixing.",
+      "Threshold rules exclude missing account/IP group keys instead of treating placeholder values as identities. Individual failure rules still retain those events.",
+      "Only failed-login events for AzureSQLConnectivityChecker with a private IPv4 source are excluded as the documented internal checker signature. Other failures are not automatically classified as benign.",
+      "Role-change patterns accept ALTER ROLE, ALTER SERVER ROLE, and legacy role-member procedures. Legacy procedure parsing supports positional or canonically ordered named literal arguments, not variables, reordered named arguments, or dynamic SQL.",
+      "Five- and ten-minute query periods match their schedules to avoid deliberate rolling-window duplicate alerts. Validate ingestion latency; events arriving after their event-time window may be missed.",
+      "Existing source overlaps are retained: generic login failures vs threshold failures, and securityadmin removal vs any server-role removal. Enable only the combinations appropriate for your incident workflow.",
+      "Native audit events are preferred. BATCH_COMPLETED_GROUP is an alternative for statement coverage but can increase volume, expose sensitive SQL, and produce duplicate observations when combined with native groups.",
+      "Scheduled query execution does not verify an actual database deletion or committed transaction. Audit success may describe permission checks; correlate native audit records and database state."
+    ],
+    "rules": [
+      {
+        "ruleId": "739531a9-91b8-4b87-a169-000000000001",
+        "displayName": "SQL MI - Database role member added",
+        "sourceFile": "AlteredUserRoleInSQL.kql",
+        "source": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/AlteredUserRoleInSQL.kql",
+        "resourceType": "MANAGEDINSTANCES",
+        "prerequisites": "DATABASE_ROLE_MEMBER_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement."
+      },
+      {
+        "ruleId": "739531a9-91b8-4b87-a169-000000000002",
+        "displayName": "SQL MI - Database authentication failure",
+        "sourceFile": "DatabaseAuthenticationFailures.kql",
+        "source": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/DatabaseAuthenticationFailures.kql",
+        "resourceType": "MANAGEDINSTANCES",
+        "prerequisites": "FAILED_DATABASE_AUTHENTICATION_GROUP."
+      },
+      {
+        "ruleId": "739531a9-91b8-4b87-a169-000000000003",
+        "displayName": "SQL MI - DROP DATABASE reported successful by audit",
+        "sourceFile": "DatabaseDeletedSuccessfully.kql",
+        "source": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/DatabaseDeletedSuccessfully.kql",
+        "resourceType": "MANAGEDINSTANCES",
+        "prerequisites": "DATABASE_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement."
+      },
+      {
+        "ruleId": "739531a9-91b8-4b87-a169-000000000004",
+        "displayName": "SQL MI - Failed server login observed",
+        "sourceFile": "FailedSQLLogins.kql",
+        "source": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/FailedSQLLogins.kql",
+        "resourceType": "MANAGEDINSTANCES",
+        "prerequisites": "FAILED_LOGIN_GROUP."
+      },
+      {
+        "ruleId": "739531a9-91b8-4b87-a169-000000000005",
+        "displayName": "SQL MI - Multiple failed logins from one source IP",
+        "sourceFile": "MultipleFailedLoginsFromSingleIP.kql",
+        "source": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/MultipleFailedLoginsFromSingleIP.kql",
+        "resourceType": "MANAGEDINSTANCES",
+        "prerequisites": "FAILED_LOGIN_GROUP with a valid client IP."
+      },
+      {
+        "ruleId": "739531a9-91b8-4b87-a169-000000000006",
+        "displayName": "SQL MI - Multiple failed logins for one account",
+        "sourceFile": "MultipleFailedLoginsInShortSpan.kql",
+        "source": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/MultipleFailedLoginsInShortSpan.kql",
+        "resourceType": "MANAGEDINSTANCES",
+        "prerequisites": "FAILED_LOGIN_GROUP with a populated account identity."
+      },
+      {
+        "ruleId": "739531a9-91b8-4b87-a169-000000000007",
+        "displayName": "SQL MI - New server login reported successful by audit",
+        "sourceFile": "NewLoginCreatedSuccessfully.kql",
+        "source": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/NewLoginCreatedSuccessfully.kql",
+        "resourceType": "MANAGEDINSTANCES",
+        "prerequisites": "SERVER_PRINCIPAL_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement."
+      },
+      {
+        "ruleId": "739531a9-91b8-4b87-a169-000000000008",
+        "displayName": "SQL MI - DROP TABLE reported successful by audit",
+        "sourceFile": "TableDeletedSuccessfully.kql",
+        "source": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/TableDeletedSuccessfully.kql",
+        "resourceType": "MANAGEDINSTANCES",
+        "prerequisites": "SCHEMA_OBJECT_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement."
+      },
+      {
+        "ruleId": "739531a9-91b8-4b87-a169-000000000009",
+        "displayName": "SQL MI - Member added to securityadmin",
+        "sourceFile": "UserAddedInSecurityAdminRole.kql",
+        "source": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/UserAddedInSecurityAdminRole.kql",
+        "resourceType": "MANAGEDINSTANCES",
+        "prerequisites": "SERVER_ROLE_MEMBER_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement."
+      },
+      {
+        "ruleId": "739531a9-91b8-4b87-a169-000000000010",
+        "displayName": "SQL MI - Member added to sysadmin",
+        "sourceFile": "UserAddedInSysadminRole.kql",
+        "source": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/UserAddedInSysadminRole.kql",
+        "resourceType": "MANAGEDINSTANCES",
+        "prerequisites": "SERVER_ROLE_MEMBER_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement."
+      },
+      {
+        "ruleId": "739531a9-91b8-4b87-a169-000000000011",
+        "displayName": "SQL Database ONLY - Member added to loginmanager or dbmanager (not MI)",
+        "sourceFile": "UserAddedTo-loginmanager|dbmanager-roles.kql",
+        "source": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/UserAddedTo-loginmanager%7Cdbmanager-roles.kql",
+        "resourceType": "SERVERS/DATABASES",
+        "prerequisites": "Azure SQL Database audit collection with DATABASE_ROLE_MEMBER_CHANGE_GROUP or captured batch statements. Does NOT apply to SQL Managed Instance."
+      },
+      {
+        "ruleId": "739531a9-91b8-4b87-a169-000000000012",
+        "displayName": "SQL MI - Database role member removed",
+        "sourceFile": "UserRemovedFromDatabase.kql",
+        "source": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/UserRemovedFromDatabase.kql",
+        "resourceType": "MANAGEDINSTANCES",
+        "prerequisites": "DATABASE_ROLE_MEMBER_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement."
+      },
+      {
+        "ruleId": "739531a9-91b8-4b87-a169-000000000013",
+        "displayName": "SQL MI - Member removed from securityadmin",
+        "sourceFile": "UserRemovedFromSecurityAdminRole.kql",
+        "source": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/UserRemovedFromSecurityAdminRole.kql",
+        "resourceType": "MANAGEDINSTANCES",
+        "prerequisites": "SERVER_ROLE_MEMBER_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement."
+      },
+      {
+        "ruleId": "739531a9-91b8-4b87-a169-000000000014",
+        "displayName": "SQL MI - Server role member removed",
+        "sourceFile": "UserRemovedFromServerRole.kql",
+        "source": "https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/UserRemovedFromServerRole.kql",
+        "resourceType": "MANAGEDINSTANCES",
+        "prerequisites": "SERVER_ROLE_MEMBER_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement."
+      }
+    ]
+  },
+  "parameters": {
+    "workspace": {
+      "metadata": {
+        "description": "Target Microsoft Sentinel Log Analytics workspace name (not workspace/customer GUID). Portal Analytics import selects the current workspace."
+      },
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/739531a9-91b8-4b87-a169-000000000001')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL MI - Database role member added",
+        "description": "Detects successful ALTER ROLE ADD MEMBER and legacy sp_addrolemember statements, including unquoted and quoted identifiers. Prerequisites: DATABASE_ROLE_MEMBER_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement. Source: https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/AlteredUserRoleInSQL.kql. All rules import disabled. Review audit coverage, source field quality, thresholds, and maintenance allowlists before enabling. Audit succeeded=true is a reported audit outcome, not independent verification that a transaction committed. Statement-based matching is heuristic and can miss dynamic SQL, comments between tokens, or multiple objects; inspect native audit context. Raw SQL may contain sensitive data; the query retains it for investigation but does not copy it into custom details.",
+        "severity": "Medium",
+        "enabled": false,
+        "query": "let Identifier = @\"(?:\\[(?:[^\\]]|\\]\\])+\\]|\\x22(?:[^\\x22]|\\x22\\x22)+\\x22|[A-Za-z_#@][A-Za-z0-9_@$#.-]*)\";\r\nlet DecodeIdentifier = (token:string) {\r\n    case(\r\n        token startswith \"[\" and token endswith \"]\", replace_string(substring(token, 1, strlen(token) - 2), \"]]\", \"]\"),\r\n        token startswith '\"' and token endswith '\"', replace_string(substring(token, 1, strlen(token) - 2), '\"\"', '\"'),\r\n        token)\r\n};\r\nAzureDiagnostics\r\n| where TimeGenerated >= ago(5m)\r\n| where ResourceProvider =~ \"MICROSOFT.SQL\" and ResourceType =~ \"MANAGEDINSTANCES\"\r\n| where Category == \"SQLSecurityAuditEvents\"\r\n| extend ResourceId = coalesce(_ResourceId, ResourceId),\r\n    ServerName = coalesce(server_instance_name_s, LogicalServerName_s),\r\n    DatabaseName = database_name_s,\r\n    Actor = coalesce(server_principal_name_s, session_server_principal_name_s),\r\n    ClientIP = client_ip_s,\r\n    ApplicationName = application_name_s,\r\n    ClientHost = host_name_s,\r\n    AuditAction = action_name_s,\r\n    AuditSuccess = succeeded_s,\r\n    Statement = statement_s,\r\n    ConnectionId = tostring(connection_id_g),\r\n    TargetAccount = coalesce(target_server_principal_name_s, target_database_principal_name_s),\r\n    TargetRole = \"\",\r\n    TargetObject = \"\",\r\n    Details = additional_information_s\r\n| extend IPAddress = iff(isnotnull(parse_ipv4(ClientIP)) or isnotempty(parse_ipv6(ClientIP)), ClientIP, \"\")\n| where AuditSuccess =~ \"true\"\r\n| extend ParsedRole = DecodeIdentifier(extract(strcat(@\"(?i)\\bALTER\\s+ROLE\\s+(\", Identifier, @\")\\s+ADD\\s+MEMBER\\s+(\", Identifier, \")\"), 1, Statement)),\r\n    ParsedMember = DecodeIdentifier(extract(strcat(@\"(?i)\\bALTER\\s+ROLE\\s+(\", Identifier, @\")\\s+ADD\\s+MEMBER\\s+(\", Identifier, \")\"), 2, Statement))\r\n| extend LegacyCall = extract(@\"(?is)\\bsp_addrolemember\\s+(.+?)(?:;|$)\", 1, Statement)\r\n| extend LegacyFirst = extract(@\"(?is)^\\s*(?:@\\w+\\s*=\\s*)?N?'((?:[^']|'')*)'\", 1, LegacyCall),\r\n    LegacySecond = extract(@\"(?is)^\\s*(?:@\\w+\\s*=\\s*)?N?'(?:[^']|'')*'\\s*,\\s*(?:@\\w+\\s*=\\s*)?N?'((?:[^']|'')*)'\", 1, LegacyCall)\r\n| extend LegacyRole = replace_string(LegacyFirst, \"''\", \"'\"),\r\n    LegacyMember = replace_string(LegacySecond, \"''\", \"'\")\r\n| extend TargetRole = coalesce(ParsedRole, LegacyRole),\r\n    TargetAccount = coalesce(TargetAccount, ParsedMember, LegacyMember)\r\n| where isnotempty(TargetRole)\n| project TimeGenerated, ResourceId, ServerName, DatabaseName, Actor, ClientIP, IPAddress,\r\n    ApplicationName, ClientHost, AuditAction, AuditSuccess, Statement, ConnectionId,\r\n    TargetAccount, TargetRole, TargetObject, Details",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Persistence",
+          "PrivilegeEscalation"
+        ],
+        "techniques": [
+          "T1098"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "groupingConfiguration": {
+            "reopenClosedIncident": false,
+            "enabled": true,
+            "matchingMethod": "Selected",
+            "groupByAlertDetails": [
+              "DisplayName"
+            ],
+            "lookbackDuration": "PT1H",
+            "groupByCustomDetails": [
+              "ResourceId"
+            ],
+            "groupByEntities": []
+          },
+          "createIncident": true
+        },
+        "entityMappings": [
+          {
+            "fieldMappings": [
+              {
+                "identifier": "ResourceId",
+                "columnName": "ResourceId"
+              }
+            ],
+            "entityType": "AzureResource"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "Actor"
+              }
+            ],
+            "entityType": "Account"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IPAddress"
+              }
+            ],
+            "entityType": "IP"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "TargetAccount"
+              }
+            ],
+            "entityType": "Account"
+          }
+        ],
+        "customDetails": {
+          "ResourceId": "ResourceId",
+          "ServerName": "ServerName",
+          "DatabaseName": "DatabaseName",
+          "Actor": "Actor",
+          "RawClientIP": "ClientIP",
+          "AuditAction": "AuditAction",
+          "AuditSuccess": "AuditSuccess",
+          "ConnectionId": "ConnectionId",
+          "TargetAccount": "TargetAccount",
+          "TargetRole": "TargetRole"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/739531a9-91b8-4b87-a169-000000000002')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL MI - Database authentication failure",
+        "description": "One summary alert per five-minute run. Separate from server-level LGIF failures. Investigate rather than treating an individual failure as proof of brute force. Prerequisites: FAILED_DATABASE_AUTHENTICATION_GROUP. Source: https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/DatabaseAuthenticationFailures.kql. All rules import disabled. Review audit coverage, source field quality, thresholds, and maintenance allowlists before enabling. Audit succeeded=true is a reported audit outcome, not independent verification that a transaction committed. Statement-based matching is heuristic and can miss dynamic SQL, comments between tokens, or multiple objects; inspect native audit context. Raw SQL may contain sensitive data; the query retains it for investigation but does not copy it into custom details.",
+        "severity": "Low",
+        "enabled": false,
+        "query": "let Identifier = @\"(?:\\[(?:[^\\]]|\\]\\])+\\]|\\x22(?:[^\\x22]|\\x22\\x22)+\\x22|[A-Za-z_#@][A-Za-z0-9_@$#.-]*)\";\r\nlet DecodeIdentifier = (token:string) {\r\n    case(\r\n        token startswith \"[\" and token endswith \"]\", replace_string(substring(token, 1, strlen(token) - 2), \"]]\", \"]\"),\r\n        token startswith '\"' and token endswith '\"', replace_string(substring(token, 1, strlen(token) - 2), '\"\"', '\"'),\r\n        token)\r\n};\r\nAzureDiagnostics\r\n| where TimeGenerated >= ago(5m)\r\n| where ResourceProvider =~ \"MICROSOFT.SQL\" and ResourceType =~ \"MANAGEDINSTANCES\"\r\n| where Category == \"SQLSecurityAuditEvents\"\r\n| extend ResourceId = coalesce(_ResourceId, ResourceId),\r\n    ServerName = coalesce(server_instance_name_s, LogicalServerName_s),\r\n    DatabaseName = database_name_s,\r\n    Actor = coalesce(server_principal_name_s, session_server_principal_name_s),\r\n    ClientIP = client_ip_s,\r\n    ApplicationName = application_name_s,\r\n    ClientHost = host_name_s,\r\n    AuditAction = action_name_s,\r\n    AuditSuccess = succeeded_s,\r\n    Statement = statement_s,\r\n    ConnectionId = tostring(connection_id_g),\r\n    TargetAccount = coalesce(target_server_principal_name_s, target_database_principal_name_s),\r\n    TargetRole = \"\",\r\n    TargetObject = \"\",\r\n    Details = additional_information_s\r\n| extend IPAddress = iff(isnotnull(parse_ipv4(ClientIP)) or isnotempty(parse_ipv6(ClientIP)), ClientIP, \"\")\n| where action_id_s == \"DBAF\" or AuditAction =~ \"DATABASE AUTHENTICATION FAILED\"\n| project TimeGenerated, ResourceId, ServerName, DatabaseName, Actor, ClientIP, IPAddress,\r\n    ApplicationName, ClientHost, AuditAction, AuditSuccess, Statement, ConnectionId,\r\n    TargetAccount, TargetRole, TargetObject, Details",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CredentialAccess"
+        ],
+        "techniques": [
+          "T1110"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "SingleAlert"
+        },
+        "incidentConfiguration": {
+          "groupingConfiguration": {
+            "reopenClosedIncident": false,
+            "enabled": true,
+            "matchingMethod": "Selected",
+            "groupByAlertDetails": [
+              "DisplayName"
+            ],
+            "lookbackDuration": "PT1H",
+            "groupByCustomDetails": [
+              "ResourceId"
+            ],
+            "groupByEntities": []
+          },
+          "createIncident": true
+        },
+        "entityMappings": [
+          {
+            "fieldMappings": [
+              {
+                "identifier": "ResourceId",
+                "columnName": "ResourceId"
+              }
+            ],
+            "entityType": "AzureResource"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "Actor"
+              }
+            ],
+            "entityType": "Account"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IPAddress"
+              }
+            ],
+            "entityType": "IP"
+          }
+        ],
+        "customDetails": {
+          "ResourceId": "ResourceId",
+          "ServerName": "ServerName",
+          "DatabaseName": "DatabaseName",
+          "Actor": "Actor",
+          "RawClientIP": "ClientIP",
+          "AuditAction": "AuditAction",
+          "AuditSuccess": "AuditSuccess",
+          "ConnectionId": "ConnectionId"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/739531a9-91b8-4b87-a169-000000000003')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL MI - DROP DATABASE reported successful by audit",
+        "description": "Identifies the first database in a DROP DATABASE statement, including IF EXISTS. Audit success is not independent proof of committed deletion; IF EXISTS can be a no-op. Prerequisites: DATABASE_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement. Source: https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/DatabaseDeletedSuccessfully.kql. All rules import disabled. Review audit coverage, source field quality, thresholds, and maintenance allowlists before enabling. Audit succeeded=true is a reported audit outcome, not independent verification that a transaction committed. Statement-based matching is heuristic and can miss dynamic SQL, comments between tokens, or multiple objects; inspect native audit context. Raw SQL may contain sensitive data; the query retains it for investigation but does not copy it into custom details.",
+        "severity": "High",
+        "enabled": false,
+        "query": "let Identifier = @\"(?:\\[(?:[^\\]]|\\]\\])+\\]|\\x22(?:[^\\x22]|\\x22\\x22)+\\x22|[A-Za-z_#@][A-Za-z0-9_@$#.-]*)\";\r\nlet DecodeIdentifier = (token:string) {\r\n    case(\r\n        token startswith \"[\" and token endswith \"]\", replace_string(substring(token, 1, strlen(token) - 2), \"]]\", \"]\"),\r\n        token startswith '\"' and token endswith '\"', replace_string(substring(token, 1, strlen(token) - 2), '\"\"', '\"'),\r\n        token)\r\n};\r\nAzureDiagnostics\r\n| where TimeGenerated >= ago(5m)\r\n| where ResourceProvider =~ \"MICROSOFT.SQL\" and ResourceType =~ \"MANAGEDINSTANCES\"\r\n| where Category == \"SQLSecurityAuditEvents\"\r\n| extend ResourceId = coalesce(_ResourceId, ResourceId),\r\n    ServerName = coalesce(server_instance_name_s, LogicalServerName_s),\r\n    DatabaseName = database_name_s,\r\n    Actor = coalesce(server_principal_name_s, session_server_principal_name_s),\r\n    ClientIP = client_ip_s,\r\n    ApplicationName = application_name_s,\r\n    ClientHost = host_name_s,\r\n    AuditAction = action_name_s,\r\n    AuditSuccess = succeeded_s,\r\n    Statement = statement_s,\r\n    ConnectionId = tostring(connection_id_g),\r\n    TargetAccount = coalesce(target_server_principal_name_s, target_database_principal_name_s),\r\n    TargetRole = \"\",\r\n    TargetObject = \"\",\r\n    Details = additional_information_s\r\n| extend IPAddress = iff(isnotnull(parse_ipv4(ClientIP)) or isnotempty(parse_ipv6(ClientIP)), ClientIP, \"\")\n| where AuditSuccess =~ \"true\"\r\n| extend TargetObject = DecodeIdentifier(extract(strcat(@\"(?i)\\bDROP\\s+DATABASE\\s+(?:IF\\s+EXISTS\\s+)?(\", Identifier, \")\"), 1, Statement))\r\n| where isnotempty(TargetObject)\n| project TimeGenerated, ResourceId, ServerName, DatabaseName, Actor, ClientIP, IPAddress,\r\n    ApplicationName, ClientHost, AuditAction, AuditSuccess, Statement, ConnectionId,\r\n    TargetAccount, TargetRole, TargetObject, Details",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Impact"
+        ],
+        "techniques": [
+          "T1485"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "groupingConfiguration": {
+            "reopenClosedIncident": false,
+            "enabled": true,
+            "matchingMethod": "Selected",
+            "groupByAlertDetails": [
+              "DisplayName"
+            ],
+            "lookbackDuration": "PT1H",
+            "groupByCustomDetails": [
+              "ResourceId"
+            ],
+            "groupByEntities": []
+          },
+          "createIncident": true
+        },
+        "entityMappings": [
+          {
+            "fieldMappings": [
+              {
+                "identifier": "ResourceId",
+                "columnName": "ResourceId"
+              }
+            ],
+            "entityType": "AzureResource"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "Actor"
+              }
+            ],
+            "entityType": "Account"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IPAddress"
+              }
+            ],
+            "entityType": "IP"
+          }
+        ],
+        "customDetails": {
+          "ResourceId": "ResourceId",
+          "ServerName": "ServerName",
+          "DatabaseName": "DatabaseName",
+          "Actor": "Actor",
+          "RawClientIP": "ClientIP",
+          "AuditAction": "AuditAction",
+          "AuditSuccess": "AuditSuccess",
+          "ConnectionId": "ConnectionId",
+          "TargetObject": "TargetObject"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/739531a9-91b8-4b87-a169-000000000004')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL MI - Failed server login observed",
+        "description": "One summary alert per five-minute run. Preserves failures with missing account or source IP for investigation. Suppresses only the documented checker account when accompanied by a private IPv4 source; coordinate with the threshold rules to avoid duplicate incident volume. Prerequisites: FAILED_LOGIN_GROUP. Source: https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/FailedSQLLogins.kql. All rules import disabled. Review audit coverage, source field quality, thresholds, and maintenance allowlists before enabling. Audit succeeded=true is a reported audit outcome, not independent verification that a transaction committed. Statement-based matching is heuristic and can miss dynamic SQL, comments between tokens, or multiple objects; inspect native audit context. Raw SQL may contain sensitive data; the query retains it for investigation but does not copy it into custom details.",
+        "severity": "Low",
+        "enabled": false,
+        "query": "let Identifier = @\"(?:\\[(?:[^\\]]|\\]\\])+\\]|\\x22(?:[^\\x22]|\\x22\\x22)+\\x22|[A-Za-z_#@][A-Za-z0-9_@$#.-]*)\";\r\nlet DecodeIdentifier = (token:string) {\r\n    case(\r\n        token startswith \"[\" and token endswith \"]\", replace_string(substring(token, 1, strlen(token) - 2), \"]]\", \"]\"),\r\n        token startswith '\"' and token endswith '\"', replace_string(substring(token, 1, strlen(token) - 2), '\"\"', '\"'),\r\n        token)\r\n};\r\nAzureDiagnostics\r\n| where TimeGenerated >= ago(5m)\r\n| where ResourceProvider =~ \"MICROSOFT.SQL\" and ResourceType =~ \"MANAGEDINSTANCES\"\r\n| where Category == \"SQLSecurityAuditEvents\"\r\n| extend ResourceId = coalesce(_ResourceId, ResourceId),\r\n    ServerName = coalesce(server_instance_name_s, LogicalServerName_s),\r\n    DatabaseName = database_name_s,\r\n    Actor = coalesce(server_principal_name_s, session_server_principal_name_s),\r\n    ClientIP = client_ip_s,\r\n    ApplicationName = application_name_s,\r\n    ClientHost = host_name_s,\r\n    AuditAction = action_name_s,\r\n    AuditSuccess = succeeded_s,\r\n    Statement = statement_s,\r\n    ConnectionId = tostring(connection_id_g),\r\n    TargetAccount = coalesce(target_server_principal_name_s, target_database_principal_name_s),\r\n    TargetRole = \"\",\r\n    TargetObject = \"\",\r\n    Details = additional_information_s\r\n| extend IPAddress = iff(isnotnull(parse_ipv4(ClientIP)) or isnotempty(parse_ipv6(ClientIP)), ClientIP, \"\")\n| where action_id_s == \"LGIF\" or AuditAction =~ \"LOGIN FAILED\"\r\n| where not(Actor =~ \"AzureSQLConnectivityChecker\" and ipv4_is_private(ClientIP) == true)\n| project TimeGenerated, ResourceId, ServerName, DatabaseName, Actor, ClientIP, IPAddress,\r\n    ApplicationName, ClientHost, AuditAction, AuditSuccess, Statement, ConnectionId,\r\n    TargetAccount, TargetRole, TargetObject, Details",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CredentialAccess"
+        ],
+        "techniques": [
+          "T1110"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "SingleAlert"
+        },
+        "incidentConfiguration": {
+          "groupingConfiguration": {
+            "reopenClosedIncident": false,
+            "enabled": true,
+            "matchingMethod": "Selected",
+            "groupByAlertDetails": [
+              "DisplayName"
+            ],
+            "lookbackDuration": "PT1H",
+            "groupByCustomDetails": [
+              "ResourceId"
+            ],
+            "groupByEntities": []
+          },
+          "createIncident": true
+        },
+        "entityMappings": [
+          {
+            "fieldMappings": [
+              {
+                "identifier": "ResourceId",
+                "columnName": "ResourceId"
+              }
+            ],
+            "entityType": "AzureResource"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "Actor"
+              }
+            ],
+            "entityType": "Account"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IPAddress"
+              }
+            ],
+            "entityType": "IP"
+          }
+        ],
+        "customDetails": {
+          "ResourceId": "ResourceId",
+          "ServerName": "ServerName",
+          "DatabaseName": "DatabaseName",
+          "Actor": "Actor",
+          "RawClientIP": "ClientIP",
+          "AuditAction": "AuditAction",
+          "AuditSuccess": "AuditSuccess",
+          "ConnectionId": "ConnectionId"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/739531a9-91b8-4b87-a169-000000000005')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL MI - Multiple failed logins from one source IP",
+        "description": "More than five failures in ten minutes, grouped by MI resource and valid IPv4/IPv6 address. Missing or placeholder IP values cannot form an IP entity or trigger this rule. The actor list is context, not a claim that a single account was involved. Prerequisites: FAILED_LOGIN_GROUP with a valid client IP. Source: https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/MultipleFailedLoginsFromSingleIP.kql. All rules import disabled. Review audit coverage, source field quality, thresholds, and maintenance allowlists before enabling. Audit succeeded=true is a reported audit outcome, not independent verification that a transaction committed. Statement-based matching is heuristic and can miss dynamic SQL, comments between tokens, or multiple objects; inspect native audit context. Raw SQL may contain sensitive data; the query retains it for investigation but does not copy it into custom details.",
+        "severity": "Medium",
+        "enabled": false,
+        "query": "let Identifier = @\"(?:\\[(?:[^\\]]|\\]\\])+\\]|\\x22(?:[^\\x22]|\\x22\\x22)+\\x22|[A-Za-z_#@][A-Za-z0-9_@$#.-]*)\";\r\nlet DecodeIdentifier = (token:string) {\r\n    case(\r\n        token startswith \"[\" and token endswith \"]\", replace_string(substring(token, 1, strlen(token) - 2), \"]]\", \"]\"),\r\n        token startswith '\"' and token endswith '\"', replace_string(substring(token, 1, strlen(token) - 2), '\"\"', '\"'),\r\n        token)\r\n};\r\nAzureDiagnostics\r\n| where TimeGenerated >= ago(10m)\r\n| where ResourceProvider =~ \"MICROSOFT.SQL\" and ResourceType =~ \"MANAGEDINSTANCES\"\r\n| where Category == \"SQLSecurityAuditEvents\"\r\n| extend ResourceId = coalesce(_ResourceId, ResourceId),\r\n    ServerName = coalesce(server_instance_name_s, LogicalServerName_s),\r\n    DatabaseName = database_name_s,\r\n    Actor = coalesce(server_principal_name_s, session_server_principal_name_s),\r\n    ClientIP = client_ip_s,\r\n    ApplicationName = application_name_s,\r\n    ClientHost = host_name_s,\r\n    AuditAction = action_name_s,\r\n    AuditSuccess = succeeded_s,\r\n    Statement = statement_s,\r\n    ConnectionId = tostring(connection_id_g),\r\n    TargetAccount = coalesce(target_server_principal_name_s, target_database_principal_name_s),\r\n    TargetRole = \"\",\r\n    TargetObject = \"\",\r\n    Details = additional_information_s\r\n| extend IPAddress = iff(isnotnull(parse_ipv4(ClientIP)) or isnotempty(parse_ipv6(ClientIP)), ClientIP, \"\")\n| where action_id_s == \"LGIF\" or AuditAction =~ \"LOGIN FAILED\"\r\n| where not(Actor =~ \"AzureSQLConnectivityChecker\" and ipv4_is_private(ClientIP) == true)\n| where isnotempty(IPAddress)\r\n| summarize FirstSeen = min(TimeGenerated), TimeGenerated = max(TimeGenerated), FailedCount = count(),\r\n    Accounts = make_set_if(Actor, isnotempty(Actor), 20)\r\n    by ResourceId, ServerName, ClientIP, IPAddress\r\n| where FailedCount > 5\r\n| extend Actor = \"\", DatabaseName = \"\", ApplicationName = \"\", ClientHost = \"\",\r\n    AuditAction = \"LOGIN FAILED\", AuditSuccess = \"false\", Statement = \"\", ConnectionId = \"\",\r\n    TargetAccount = \"\", TargetRole = \"\", TargetObject = \"\",\r\n    Details = strcat(\"Failed logins: \", FailedCount, \"; accounts: \", tostring(Accounts))\n| project TimeGenerated, ResourceId, ServerName, DatabaseName, Actor, ClientIP, IPAddress,\r\n    ApplicationName, ClientHost, AuditAction, AuditSuccess, Statement, ConnectionId,\r\n    TargetAccount, TargetRole, TargetObject, Details, FirstSeen, FailedCount",
+        "queryFrequency": "PT10M",
+        "queryPeriod": "PT10M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CredentialAccess"
+        ],
+        "techniques": [
+          "T1110"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "groupingConfiguration": {
+            "reopenClosedIncident": false,
+            "enabled": true,
+            "matchingMethod": "Selected",
+            "groupByAlertDetails": [
+              "DisplayName"
+            ],
+            "lookbackDuration": "PT1H",
+            "groupByCustomDetails": [
+              "ResourceId"
+            ],
+            "groupByEntities": []
+          },
+          "createIncident": true
+        },
+        "entityMappings": [
+          {
+            "fieldMappings": [
+              {
+                "identifier": "ResourceId",
+                "columnName": "ResourceId"
+              }
+            ],
+            "entityType": "AzureResource"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IPAddress"
+              }
+            ],
+            "entityType": "IP"
+          }
+        ],
+        "customDetails": {
+          "ResourceId": "ResourceId",
+          "ServerName": "ServerName",
+          "DatabaseName": "DatabaseName",
+          "Actor": "Actor",
+          "RawClientIP": "ClientIP",
+          "AuditAction": "AuditAction",
+          "AuditSuccess": "AuditSuccess",
+          "ConnectionId": "ConnectionId",
+          "FailedCount": "FailedCount"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/739531a9-91b8-4b87-a169-000000000006')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL MI - Multiple failed logins for one account",
+        "description": "More than five failures in ten minutes, grouped by MI resource and account. Empty usernames are excluded instead of being combined into a fictitious account. Source IP values remain in Details; no arbitrary single IP is mapped. Prerequisites: FAILED_LOGIN_GROUP with a populated account identity. Source: https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/MultipleFailedLoginsInShortSpan.kql. All rules import disabled. Review audit coverage, source field quality, thresholds, and maintenance allowlists before enabling. Audit succeeded=true is a reported audit outcome, not independent verification that a transaction committed. Statement-based matching is heuristic and can miss dynamic SQL, comments between tokens, or multiple objects; inspect native audit context. Raw SQL may contain sensitive data; the query retains it for investigation but does not copy it into custom details.",
+        "severity": "Medium",
+        "enabled": false,
+        "query": "let Identifier = @\"(?:\\[(?:[^\\]]|\\]\\])+\\]|\\x22(?:[^\\x22]|\\x22\\x22)+\\x22|[A-Za-z_#@][A-Za-z0-9_@$#.-]*)\";\r\nlet DecodeIdentifier = (token:string) {\r\n    case(\r\n        token startswith \"[\" and token endswith \"]\", replace_string(substring(token, 1, strlen(token) - 2), \"]]\", \"]\"),\r\n        token startswith '\"' and token endswith '\"', replace_string(substring(token, 1, strlen(token) - 2), '\"\"', '\"'),\r\n        token)\r\n};\r\nAzureDiagnostics\r\n| where TimeGenerated >= ago(10m)\r\n| where ResourceProvider =~ \"MICROSOFT.SQL\" and ResourceType =~ \"MANAGEDINSTANCES\"\r\n| where Category == \"SQLSecurityAuditEvents\"\r\n| extend ResourceId = coalesce(_ResourceId, ResourceId),\r\n    ServerName = coalesce(server_instance_name_s, LogicalServerName_s),\r\n    DatabaseName = database_name_s,\r\n    Actor = coalesce(server_principal_name_s, session_server_principal_name_s),\r\n    ClientIP = client_ip_s,\r\n    ApplicationName = application_name_s,\r\n    ClientHost = host_name_s,\r\n    AuditAction = action_name_s,\r\n    AuditSuccess = succeeded_s,\r\n    Statement = statement_s,\r\n    ConnectionId = tostring(connection_id_g),\r\n    TargetAccount = coalesce(target_server_principal_name_s, target_database_principal_name_s),\r\n    TargetRole = \"\",\r\n    TargetObject = \"\",\r\n    Details = additional_information_s\r\n| extend IPAddress = iff(isnotnull(parse_ipv4(ClientIP)) or isnotempty(parse_ipv6(ClientIP)), ClientIP, \"\")\n| where action_id_s == \"LGIF\" or AuditAction =~ \"LOGIN FAILED\"\r\n| where not(Actor =~ \"AzureSQLConnectivityChecker\" and ipv4_is_private(ClientIP) == true)\n| where isnotempty(Actor)\r\n| summarize FirstSeen = min(TimeGenerated), TimeGenerated = max(TimeGenerated), FailedCount = count(),\r\n    SourceIPs = make_set_if(ClientIP, isnotempty(ClientIP), 20)\r\n    by ResourceId, ServerName, Actor\r\n| where FailedCount > 5\r\n| extend ClientIP = \"\", IPAddress = \"\", DatabaseName = \"\", ApplicationName = \"\", ClientHost = \"\",\r\n    AuditAction = \"LOGIN FAILED\", AuditSuccess = \"false\", Statement = \"\", ConnectionId = \"\",\r\n    TargetAccount = \"\", TargetRole = \"\", TargetObject = \"\",\r\n    Details = strcat(\"Failed logins: \", FailedCount, \"; source values: \", tostring(SourceIPs))\n| project TimeGenerated, ResourceId, ServerName, DatabaseName, Actor, ClientIP, IPAddress,\r\n    ApplicationName, ClientHost, AuditAction, AuditSuccess, Statement, ConnectionId,\r\n    TargetAccount, TargetRole, TargetObject, Details, FirstSeen, FailedCount",
+        "queryFrequency": "PT10M",
+        "queryPeriod": "PT10M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "CredentialAccess"
+        ],
+        "techniques": [
+          "T1110"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "groupingConfiguration": {
+            "reopenClosedIncident": false,
+            "enabled": true,
+            "matchingMethod": "Selected",
+            "groupByAlertDetails": [
+              "DisplayName"
+            ],
+            "lookbackDuration": "PT1H",
+            "groupByCustomDetails": [
+              "ResourceId"
+            ],
+            "groupByEntities": []
+          },
+          "createIncident": true
+        },
+        "entityMappings": [
+          {
+            "fieldMappings": [
+              {
+                "identifier": "ResourceId",
+                "columnName": "ResourceId"
+              }
+            ],
+            "entityType": "AzureResource"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "Actor"
+              }
+            ],
+            "entityType": "Account"
+          }
+        ],
+        "customDetails": {
+          "ResourceId": "ResourceId",
+          "ServerName": "ServerName",
+          "DatabaseName": "DatabaseName",
+          "Actor": "Actor",
+          "RawClientIP": "ClientIP",
+          "AuditAction": "AuditAction",
+          "AuditSuccess": "AuditSuccess",
+          "ConnectionId": "ConnectionId",
+          "FailedCount": "FailedCount"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/739531a9-91b8-4b87-a169-000000000007')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL MI - New server login reported successful by audit",
+        "description": "Detects CREATE LOGIN with bracketed, double-quoted, or unquoted identifiers. Does not require a password value and does not extract passwords into additional custom fields. Prerequisites: SERVER_PRINCIPAL_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement. Source: https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/NewLoginCreatedSuccessfully.kql. All rules import disabled. Review audit coverage, source field quality, thresholds, and maintenance allowlists before enabling. Audit succeeded=true is a reported audit outcome, not independent verification that a transaction committed. Statement-based matching is heuristic and can miss dynamic SQL, comments between tokens, or multiple objects; inspect native audit context. Raw SQL may contain sensitive data; the query retains it for investigation but does not copy it into custom details.",
+        "severity": "Medium",
+        "enabled": false,
+        "query": "let Identifier = @\"(?:\\[(?:[^\\]]|\\]\\])+\\]|\\x22(?:[^\\x22]|\\x22\\x22)+\\x22|[A-Za-z_#@][A-Za-z0-9_@$#.-]*)\";\r\nlet DecodeIdentifier = (token:string) {\r\n    case(\r\n        token startswith \"[\" and token endswith \"]\", replace_string(substring(token, 1, strlen(token) - 2), \"]]\", \"]\"),\r\n        token startswith '\"' and token endswith '\"', replace_string(substring(token, 1, strlen(token) - 2), '\"\"', '\"'),\r\n        token)\r\n};\r\nAzureDiagnostics\r\n| where TimeGenerated >= ago(5m)\r\n| where ResourceProvider =~ \"MICROSOFT.SQL\" and ResourceType =~ \"MANAGEDINSTANCES\"\r\n| where Category == \"SQLSecurityAuditEvents\"\r\n| extend ResourceId = coalesce(_ResourceId, ResourceId),\r\n    ServerName = coalesce(server_instance_name_s, LogicalServerName_s),\r\n    DatabaseName = database_name_s,\r\n    Actor = coalesce(server_principal_name_s, session_server_principal_name_s),\r\n    ClientIP = client_ip_s,\r\n    ApplicationName = application_name_s,\r\n    ClientHost = host_name_s,\r\n    AuditAction = action_name_s,\r\n    AuditSuccess = succeeded_s,\r\n    Statement = statement_s,\r\n    ConnectionId = tostring(connection_id_g),\r\n    TargetAccount = coalesce(target_server_principal_name_s, target_database_principal_name_s),\r\n    TargetRole = \"\",\r\n    TargetObject = \"\",\r\n    Details = additional_information_s\r\n| extend IPAddress = iff(isnotnull(parse_ipv4(ClientIP)) or isnotempty(parse_ipv6(ClientIP)), ClientIP, \"\")\n| where AuditSuccess =~ \"true\"\r\n| extend ParsedLogin = DecodeIdentifier(extract(strcat(@\"(?i)\\bCREATE\\s+LOGIN\\s+(\", Identifier, \")\"), 1, Statement))\r\n| where isnotempty(ParsedLogin)\r\n| extend TargetAccount = coalesce(TargetAccount, ParsedLogin)\n| project TimeGenerated, ResourceId, ServerName, DatabaseName, Actor, ClientIP, IPAddress,\r\n    ApplicationName, ClientHost, AuditAction, AuditSuccess, Statement, ConnectionId,\r\n    TargetAccount, TargetRole, TargetObject, Details",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Persistence"
+        ],
+        "techniques": [
+          "T1136"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "groupingConfiguration": {
+            "reopenClosedIncident": false,
+            "enabled": true,
+            "matchingMethod": "Selected",
+            "groupByAlertDetails": [
+              "DisplayName"
+            ],
+            "lookbackDuration": "PT1H",
+            "groupByCustomDetails": [
+              "ResourceId"
+            ],
+            "groupByEntities": []
+          },
+          "createIncident": true
+        },
+        "entityMappings": [
+          {
+            "fieldMappings": [
+              {
+                "identifier": "ResourceId",
+                "columnName": "ResourceId"
+              }
+            ],
+            "entityType": "AzureResource"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "Actor"
+              }
+            ],
+            "entityType": "Account"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IPAddress"
+              }
+            ],
+            "entityType": "IP"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "TargetAccount"
+              }
+            ],
+            "entityType": "Account"
+          }
+        ],
+        "customDetails": {
+          "ResourceId": "ResourceId",
+          "ServerName": "ServerName",
+          "DatabaseName": "DatabaseName",
+          "Actor": "Actor",
+          "RawClientIP": "ClientIP",
+          "AuditAction": "AuditAction",
+          "AuditSuccess": "AuditSuccess",
+          "ConnectionId": "ConnectionId",
+          "TargetAccount": "TargetAccount"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/739531a9-91b8-4b87-a169-000000000008')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL MI - DROP TABLE reported successful by audit",
+        "description": "Includes schema-qualified and unquoted object names and IF EXISTS. Identifies the first listed table. Audit success is not independent proof of committed deletion; IF EXISTS can be a no-op. Prerequisites: SCHEMA_OBJECT_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement. Source: https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/TableDeletedSuccessfully.kql. All rules import disabled. Review audit coverage, source field quality, thresholds, and maintenance allowlists before enabling. Audit succeeded=true is a reported audit outcome, not independent verification that a transaction committed. Statement-based matching is heuristic and can miss dynamic SQL, comments between tokens, or multiple objects; inspect native audit context. Raw SQL may contain sensitive data; the query retains it for investigation but does not copy it into custom details.",
+        "severity": "High",
+        "enabled": false,
+        "query": "let Identifier = @\"(?:\\[(?:[^\\]]|\\]\\])+\\]|\\x22(?:[^\\x22]|\\x22\\x22)+\\x22|[A-Za-z_#@][A-Za-z0-9_@$#.-]*)\";\r\nlet DecodeIdentifier = (token:string) {\r\n    case(\r\n        token startswith \"[\" and token endswith \"]\", replace_string(substring(token, 1, strlen(token) - 2), \"]]\", \"]\"),\r\n        token startswith '\"' and token endswith '\"', replace_string(substring(token, 1, strlen(token) - 2), '\"\"', '\"'),\r\n        token)\r\n};\r\nAzureDiagnostics\r\n| where TimeGenerated >= ago(5m)\r\n| where ResourceProvider =~ \"MICROSOFT.SQL\" and ResourceType =~ \"MANAGEDINSTANCES\"\r\n| where Category == \"SQLSecurityAuditEvents\"\r\n| extend ResourceId = coalesce(_ResourceId, ResourceId),\r\n    ServerName = coalesce(server_instance_name_s, LogicalServerName_s),\r\n    DatabaseName = database_name_s,\r\n    Actor = coalesce(server_principal_name_s, session_server_principal_name_s),\r\n    ClientIP = client_ip_s,\r\n    ApplicationName = application_name_s,\r\n    ClientHost = host_name_s,\r\n    AuditAction = action_name_s,\r\n    AuditSuccess = succeeded_s,\r\n    Statement = statement_s,\r\n    ConnectionId = tostring(connection_id_g),\r\n    TargetAccount = coalesce(target_server_principal_name_s, target_database_principal_name_s),\r\n    TargetRole = \"\",\r\n    TargetObject = \"\",\r\n    Details = additional_information_s\r\n| extend IPAddress = iff(isnotnull(parse_ipv4(ClientIP)) or isnotempty(parse_ipv6(ClientIP)), ClientIP, \"\")\n| where AuditSuccess =~ \"true\"\r\n| extend TargetObject = extract(strcat(@\"(?i)\\bDROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(\", Identifier, @\"(?:\\s*\\.\\s*\", Identifier, \"){0,2})\"), 1, Statement)\r\n| where isnotempty(TargetObject)\n| project TimeGenerated, ResourceId, ServerName, DatabaseName, Actor, ClientIP, IPAddress,\r\n    ApplicationName, ClientHost, AuditAction, AuditSuccess, Statement, ConnectionId,\r\n    TargetAccount, TargetRole, TargetObject, Details",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Impact"
+        ],
+        "techniques": [
+          "T1485"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "groupingConfiguration": {
+            "reopenClosedIncident": false,
+            "enabled": true,
+            "matchingMethod": "Selected",
+            "groupByAlertDetails": [
+              "DisplayName"
+            ],
+            "lookbackDuration": "PT1H",
+            "groupByCustomDetails": [
+              "ResourceId"
+            ],
+            "groupByEntities": []
+          },
+          "createIncident": true
+        },
+        "entityMappings": [
+          {
+            "fieldMappings": [
+              {
+                "identifier": "ResourceId",
+                "columnName": "ResourceId"
+              }
+            ],
+            "entityType": "AzureResource"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "Actor"
+              }
+            ],
+            "entityType": "Account"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IPAddress"
+              }
+            ],
+            "entityType": "IP"
+          }
+        ],
+        "customDetails": {
+          "ResourceId": "ResourceId",
+          "ServerName": "ServerName",
+          "DatabaseName": "DatabaseName",
+          "Actor": "Actor",
+          "RawClientIP": "ClientIP",
+          "AuditAction": "AuditAction",
+          "AuditSuccess": "AuditSuccess",
+          "ConnectionId": "ConnectionId",
+          "TargetObject": "TargetObject"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/739531a9-91b8-4b87-a169-000000000009')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL MI - Member added to securityadmin",
+        "description": "Detects successful membership additions through ALTER SERVER ROLE or legacy sp_addsrvrolemember. Confirm the privileged assignment was authorized. Prerequisites: SERVER_ROLE_MEMBER_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement. Source: https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/UserAddedInSecurityAdminRole.kql. All rules import disabled. Review audit coverage, source field quality, thresholds, and maintenance allowlists before enabling. Audit succeeded=true is a reported audit outcome, not independent verification that a transaction committed. Statement-based matching is heuristic and can miss dynamic SQL, comments between tokens, or multiple objects; inspect native audit context. Raw SQL may contain sensitive data; the query retains it for investigation but does not copy it into custom details.",
+        "severity": "High",
+        "enabled": false,
+        "query": "let Identifier = @\"(?:\\[(?:[^\\]]|\\]\\])+\\]|\\x22(?:[^\\x22]|\\x22\\x22)+\\x22|[A-Za-z_#@][A-Za-z0-9_@$#.-]*)\";\r\nlet DecodeIdentifier = (token:string) {\r\n    case(\r\n        token startswith \"[\" and token endswith \"]\", replace_string(substring(token, 1, strlen(token) - 2), \"]]\", \"]\"),\r\n        token startswith '\"' and token endswith '\"', replace_string(substring(token, 1, strlen(token) - 2), '\"\"', '\"'),\r\n        token)\r\n};\r\nAzureDiagnostics\r\n| where TimeGenerated >= ago(5m)\r\n| where ResourceProvider =~ \"MICROSOFT.SQL\" and ResourceType =~ \"MANAGEDINSTANCES\"\r\n| where Category == \"SQLSecurityAuditEvents\"\r\n| extend ResourceId = coalesce(_ResourceId, ResourceId),\r\n    ServerName = coalesce(server_instance_name_s, LogicalServerName_s),\r\n    DatabaseName = database_name_s,\r\n    Actor = coalesce(server_principal_name_s, session_server_principal_name_s),\r\n    ClientIP = client_ip_s,\r\n    ApplicationName = application_name_s,\r\n    ClientHost = host_name_s,\r\n    AuditAction = action_name_s,\r\n    AuditSuccess = succeeded_s,\r\n    Statement = statement_s,\r\n    ConnectionId = tostring(connection_id_g),\r\n    TargetAccount = coalesce(target_server_principal_name_s, target_database_principal_name_s),\r\n    TargetRole = \"\",\r\n    TargetObject = \"\",\r\n    Details = additional_information_s\r\n| extend IPAddress = iff(isnotnull(parse_ipv4(ClientIP)) or isnotempty(parse_ipv6(ClientIP)), ClientIP, \"\")\n| where AuditSuccess =~ \"true\"\r\n| extend ParsedRole = DecodeIdentifier(extract(strcat(@\"(?i)\\bALTER\\s+SERVER\\s+ROLE\\s+(\", Identifier, @\")\\s+ADD\\s+MEMBER\\s+(\", Identifier, \")\"), 1, Statement)),\r\n    ParsedMember = DecodeIdentifier(extract(strcat(@\"(?i)\\bALTER\\s+SERVER\\s+ROLE\\s+(\", Identifier, @\")\\s+ADD\\s+MEMBER\\s+(\", Identifier, \")\"), 2, Statement))\r\n| extend LegacyCall = extract(@\"(?is)\\bsp_addsrvrolemember\\s+(.+?)(?:;|$)\", 1, Statement)\r\n| extend LegacyFirst = extract(@\"(?is)^\\s*(?:@\\w+\\s*=\\s*)?N?'((?:[^']|'')*)'\", 1, LegacyCall),\r\n    LegacySecond = extract(@\"(?is)^\\s*(?:@\\w+\\s*=\\s*)?N?'(?:[^']|'')*'\\s*,\\s*(?:@\\w+\\s*=\\s*)?N?'((?:[^']|'')*)'\", 1, LegacyCall)\r\n| extend LegacyMember = replace_string(LegacyFirst, \"''\", \"'\"),\r\n    LegacyRole = replace_string(LegacySecond, \"''\", \"'\")\r\n| extend TargetRole = coalesce(ParsedRole, LegacyRole),\r\n    TargetAccount = coalesce(TargetAccount, ParsedMember, LegacyMember)\r\n| where isnotempty(TargetRole)\r\n| where TargetRole =~ \"securityadmin\"\n| project TimeGenerated, ResourceId, ServerName, DatabaseName, Actor, ClientIP, IPAddress,\r\n    ApplicationName, ClientHost, AuditAction, AuditSuccess, Statement, ConnectionId,\r\n    TargetAccount, TargetRole, TargetObject, Details",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Persistence",
+          "PrivilegeEscalation"
+        ],
+        "techniques": [
+          "T1098"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "groupingConfiguration": {
+            "reopenClosedIncident": false,
+            "enabled": true,
+            "matchingMethod": "Selected",
+            "groupByAlertDetails": [
+              "DisplayName"
+            ],
+            "lookbackDuration": "PT1H",
+            "groupByCustomDetails": [
+              "ResourceId"
+            ],
+            "groupByEntities": []
+          },
+          "createIncident": true
+        },
+        "entityMappings": [
+          {
+            "fieldMappings": [
+              {
+                "identifier": "ResourceId",
+                "columnName": "ResourceId"
+              }
+            ],
+            "entityType": "AzureResource"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "Actor"
+              }
+            ],
+            "entityType": "Account"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IPAddress"
+              }
+            ],
+            "entityType": "IP"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "TargetAccount"
+              }
+            ],
+            "entityType": "Account"
+          }
+        ],
+        "customDetails": {
+          "ResourceId": "ResourceId",
+          "ServerName": "ServerName",
+          "DatabaseName": "DatabaseName",
+          "Actor": "Actor",
+          "RawClientIP": "ClientIP",
+          "AuditAction": "AuditAction",
+          "AuditSuccess": "AuditSuccess",
+          "ConnectionId": "ConnectionId",
+          "TargetAccount": "TargetAccount",
+          "TargetRole": "TargetRole"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/739531a9-91b8-4b87-a169-000000000010')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL MI - Member added to sysadmin",
+        "description": "Detects successful membership additions through ALTER SERVER ROLE or legacy sp_addsrvrolemember. This grants extensive instance privileges. Prerequisites: SERVER_ROLE_MEMBER_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement. Source: https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/UserAddedInSysadminRole.kql. All rules import disabled. Review audit coverage, source field quality, thresholds, and maintenance allowlists before enabling. Audit succeeded=true is a reported audit outcome, not independent verification that a transaction committed. Statement-based matching is heuristic and can miss dynamic SQL, comments between tokens, or multiple objects; inspect native audit context. Raw SQL may contain sensitive data; the query retains it for investigation but does not copy it into custom details.",
+        "severity": "High",
+        "enabled": false,
+        "query": "let Identifier = @\"(?:\\[(?:[^\\]]|\\]\\])+\\]|\\x22(?:[^\\x22]|\\x22\\x22)+\\x22|[A-Za-z_#@][A-Za-z0-9_@$#.-]*)\";\r\nlet DecodeIdentifier = (token:string) {\r\n    case(\r\n        token startswith \"[\" and token endswith \"]\", replace_string(substring(token, 1, strlen(token) - 2), \"]]\", \"]\"),\r\n        token startswith '\"' and token endswith '\"', replace_string(substring(token, 1, strlen(token) - 2), '\"\"', '\"'),\r\n        token)\r\n};\r\nAzureDiagnostics\r\n| where TimeGenerated >= ago(5m)\r\n| where ResourceProvider =~ \"MICROSOFT.SQL\" and ResourceType =~ \"MANAGEDINSTANCES\"\r\n| where Category == \"SQLSecurityAuditEvents\"\r\n| extend ResourceId = coalesce(_ResourceId, ResourceId),\r\n    ServerName = coalesce(server_instance_name_s, LogicalServerName_s),\r\n    DatabaseName = database_name_s,\r\n    Actor = coalesce(server_principal_name_s, session_server_principal_name_s),\r\n    ClientIP = client_ip_s,\r\n    ApplicationName = application_name_s,\r\n    ClientHost = host_name_s,\r\n    AuditAction = action_name_s,\r\n    AuditSuccess = succeeded_s,\r\n    Statement = statement_s,\r\n    ConnectionId = tostring(connection_id_g),\r\n    TargetAccount = coalesce(target_server_principal_name_s, target_database_principal_name_s),\r\n    TargetRole = \"\",\r\n    TargetObject = \"\",\r\n    Details = additional_information_s\r\n| extend IPAddress = iff(isnotnull(parse_ipv4(ClientIP)) or isnotempty(parse_ipv6(ClientIP)), ClientIP, \"\")\n| where AuditSuccess =~ \"true\"\r\n| extend ParsedRole = DecodeIdentifier(extract(strcat(@\"(?i)\\bALTER\\s+SERVER\\s+ROLE\\s+(\", Identifier, @\")\\s+ADD\\s+MEMBER\\s+(\", Identifier, \")\"), 1, Statement)),\r\n    ParsedMember = DecodeIdentifier(extract(strcat(@\"(?i)\\bALTER\\s+SERVER\\s+ROLE\\s+(\", Identifier, @\")\\s+ADD\\s+MEMBER\\s+(\", Identifier, \")\"), 2, Statement))\r\n| extend LegacyCall = extract(@\"(?is)\\bsp_addsrvrolemember\\s+(.+?)(?:;|$)\", 1, Statement)\r\n| extend LegacyFirst = extract(@\"(?is)^\\s*(?:@\\w+\\s*=\\s*)?N?'((?:[^']|'')*)'\", 1, LegacyCall),\r\n    LegacySecond = extract(@\"(?is)^\\s*(?:@\\w+\\s*=\\s*)?N?'(?:[^']|'')*'\\s*,\\s*(?:@\\w+\\s*=\\s*)?N?'((?:[^']|'')*)'\", 1, LegacyCall)\r\n| extend LegacyMember = replace_string(LegacyFirst, \"''\", \"'\"),\r\n    LegacyRole = replace_string(LegacySecond, \"''\", \"'\")\r\n| extend TargetRole = coalesce(ParsedRole, LegacyRole),\r\n    TargetAccount = coalesce(TargetAccount, ParsedMember, LegacyMember)\r\n| where isnotempty(TargetRole)\r\n| where TargetRole =~ \"sysadmin\"\n| project TimeGenerated, ResourceId, ServerName, DatabaseName, Actor, ClientIP, IPAddress,\r\n    ApplicationName, ClientHost, AuditAction, AuditSuccess, Statement, ConnectionId,\r\n    TargetAccount, TargetRole, TargetObject, Details",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Persistence",
+          "PrivilegeEscalation"
+        ],
+        "techniques": [
+          "T1098"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "groupingConfiguration": {
+            "reopenClosedIncident": false,
+            "enabled": true,
+            "matchingMethod": "Selected",
+            "groupByAlertDetails": [
+              "DisplayName"
+            ],
+            "lookbackDuration": "PT1H",
+            "groupByCustomDetails": [
+              "ResourceId"
+            ],
+            "groupByEntities": []
+          },
+          "createIncident": true
+        },
+        "entityMappings": [
+          {
+            "fieldMappings": [
+              {
+                "identifier": "ResourceId",
+                "columnName": "ResourceId"
+              }
+            ],
+            "entityType": "AzureResource"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "Actor"
+              }
+            ],
+            "entityType": "Account"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IPAddress"
+              }
+            ],
+            "entityType": "IP"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "TargetAccount"
+              }
+            ],
+            "entityType": "Account"
+          }
+        ],
+        "customDetails": {
+          "ResourceId": "ResourceId",
+          "ServerName": "ServerName",
+          "DatabaseName": "DatabaseName",
+          "Actor": "Actor",
+          "RawClientIP": "ClientIP",
+          "AuditAction": "AuditAction",
+          "AuditSuccess": "AuditSuccess",
+          "ConnectionId": "ConnectionId",
+          "TargetAccount": "TargetAccount",
+          "TargetRole": "TargetRole"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/739531a9-91b8-4b87-a169-000000000011')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL Database ONLY - Member added to loginmanager or dbmanager (not MI)",
+        "description": "Retained to preserve the fourteen source detections, as requested. Scoped ONLY to Azure SQL Database, not Managed Instance. Includes ALTER ROLE and legacy sp_addrolemember. Remains disabled for separate review. Prerequisites: Azure SQL Database audit collection with DATABASE_ROLE_MEMBER_CHANGE_GROUP or captured batch statements. Does NOT apply to SQL Managed Instance. Source: https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/UserAddedTo-loginmanager%7Cdbmanager-roles.kql. All rules import disabled. Review audit coverage, source field quality, thresholds, and maintenance allowlists before enabling. Audit succeeded=true is a reported audit outcome, not independent verification that a transaction committed. Statement-based matching is heuristic and can miss dynamic SQL, comments between tokens, or multiple objects; inspect native audit context. Raw SQL may contain sensitive data; the query retains it for investigation but does not copy it into custom details.",
+        "severity": "High",
+        "enabled": false,
+        "query": "let Identifier = @\"(?:\\[(?:[^\\]]|\\]\\])+\\]|\\x22(?:[^\\x22]|\\x22\\x22)+\\x22|[A-Za-z_#@][A-Za-z0-9_@$#.-]*)\";\r\nlet DecodeIdentifier = (token:string) {\r\n    case(\r\n        token startswith \"[\" and token endswith \"]\", replace_string(substring(token, 1, strlen(token) - 2), \"]]\", \"]\"),\r\n        token startswith '\"' and token endswith '\"', replace_string(substring(token, 1, strlen(token) - 2), '\"\"', '\"'),\r\n        token)\r\n};\r\nAzureDiagnostics\r\n| where TimeGenerated >= ago(5m)\r\n| where ResourceProvider =~ \"MICROSOFT.SQL\" and ResourceType =~ \"SERVERS/DATABASES\"\r\n| where Category == \"SQLSecurityAuditEvents\"\r\n| extend ResourceId = coalesce(_ResourceId, ResourceId),\r\n    ServerName = coalesce(server_instance_name_s, LogicalServerName_s),\r\n    DatabaseName = database_name_s,\r\n    Actor = coalesce(server_principal_name_s, session_server_principal_name_s),\r\n    ClientIP = client_ip_s,\r\n    ApplicationName = application_name_s,\r\n    ClientHost = host_name_s,\r\n    AuditAction = action_name_s,\r\n    AuditSuccess = succeeded_s,\r\n    Statement = statement_s,\r\n    ConnectionId = tostring(connection_id_g),\r\n    TargetAccount = coalesce(target_server_principal_name_s, target_database_principal_name_s),\r\n    TargetRole = \"\",\r\n    TargetObject = \"\",\r\n    Details = additional_information_s\r\n| extend IPAddress = iff(isnotnull(parse_ipv4(ClientIP)) or isnotempty(parse_ipv6(ClientIP)), ClientIP, \"\")\n| where AuditSuccess =~ \"true\"\r\n| extend ParsedRole = DecodeIdentifier(extract(strcat(@\"(?i)\\bALTER\\s+ROLE\\s+(\", Identifier, @\")\\s+ADD\\s+MEMBER\\s+(\", Identifier, \")\"), 1, Statement)),\r\n    ParsedMember = DecodeIdentifier(extract(strcat(@\"(?i)\\bALTER\\s+ROLE\\s+(\", Identifier, @\")\\s+ADD\\s+MEMBER\\s+(\", Identifier, \")\"), 2, Statement))\r\n| extend LegacyCall = extract(@\"(?is)\\bsp_addrolemember\\s+(.+?)(?:;|$)\", 1, Statement)\r\n| extend LegacyFirst = extract(@\"(?is)^\\s*(?:@\\w+\\s*=\\s*)?N?'((?:[^']|'')*)'\", 1, LegacyCall),\r\n    LegacySecond = extract(@\"(?is)^\\s*(?:@\\w+\\s*=\\s*)?N?'(?:[^']|'')*'\\s*,\\s*(?:@\\w+\\s*=\\s*)?N?'((?:[^']|'')*)'\", 1, LegacyCall)\r\n| extend LegacyRole = replace_string(LegacyFirst, \"''\", \"'\"),\r\n    LegacyMember = replace_string(LegacySecond, \"''\", \"'\")\r\n| extend TargetRole = coalesce(ParsedRole, LegacyRole),\r\n    TargetAccount = coalesce(TargetAccount, ParsedMember, LegacyMember)\r\n| where isnotempty(TargetRole)\r\n\n| where TargetRole in~ (\"loginmanager\", \"dbmanager\")\n| project TimeGenerated, ResourceId, ServerName, DatabaseName, Actor, ClientIP, IPAddress,\r\n    ApplicationName, ClientHost, AuditAction, AuditSuccess, Statement, ConnectionId,\r\n    TargetAccount, TargetRole, TargetObject, Details",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Persistence",
+          "PrivilegeEscalation"
+        ],
+        "techniques": [
+          "T1098"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "groupingConfiguration": {
+            "reopenClosedIncident": false,
+            "enabled": true,
+            "matchingMethod": "Selected",
+            "groupByAlertDetails": [
+              "DisplayName"
+            ],
+            "lookbackDuration": "PT1H",
+            "groupByCustomDetails": [
+              "ResourceId"
+            ],
+            "groupByEntities": []
+          },
+          "createIncident": true
+        },
+        "entityMappings": [
+          {
+            "fieldMappings": [
+              {
+                "identifier": "ResourceId",
+                "columnName": "ResourceId"
+              }
+            ],
+            "entityType": "AzureResource"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "Actor"
+              }
+            ],
+            "entityType": "Account"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IPAddress"
+              }
+            ],
+            "entityType": "IP"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "TargetAccount"
+              }
+            ],
+            "entityType": "Account"
+          }
+        ],
+        "customDetails": {
+          "ResourceId": "ResourceId",
+          "ServerName": "ServerName",
+          "DatabaseName": "DatabaseName",
+          "Actor": "Actor",
+          "RawClientIP": "ClientIP",
+          "AuditAction": "AuditAction",
+          "AuditSuccess": "AuditSuccess",
+          "ConnectionId": "ConnectionId",
+          "TargetAccount": "TargetAccount",
+          "TargetRole": "TargetRole"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/739531a9-91b8-4b87-a169-000000000012')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL MI - Database role member removed",
+        "description": "The source filename is misleading: this detects removal from a database role, NOT DROP USER or deletion of a database account. Includes ALTER ROLE and legacy sp_droprolemember. Prerequisites: DATABASE_ROLE_MEMBER_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement. Source: https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/UserRemovedFromDatabase.kql. All rules import disabled. Review audit coverage, source field quality, thresholds, and maintenance allowlists before enabling. Audit succeeded=true is a reported audit outcome, not independent verification that a transaction committed. Statement-based matching is heuristic and can miss dynamic SQL, comments between tokens, or multiple objects; inspect native audit context. Raw SQL may contain sensitive data; the query retains it for investigation but does not copy it into custom details.",
+        "severity": "Medium",
+        "enabled": false,
+        "query": "let Identifier = @\"(?:\\[(?:[^\\]]|\\]\\])+\\]|\\x22(?:[^\\x22]|\\x22\\x22)+\\x22|[A-Za-z_#@][A-Za-z0-9_@$#.-]*)\";\r\nlet DecodeIdentifier = (token:string) {\r\n    case(\r\n        token startswith \"[\" and token endswith \"]\", replace_string(substring(token, 1, strlen(token) - 2), \"]]\", \"]\"),\r\n        token startswith '\"' and token endswith '\"', replace_string(substring(token, 1, strlen(token) - 2), '\"\"', '\"'),\r\n        token)\r\n};\r\nAzureDiagnostics\r\n| where TimeGenerated >= ago(5m)\r\n| where ResourceProvider =~ \"MICROSOFT.SQL\" and ResourceType =~ \"MANAGEDINSTANCES\"\r\n| where Category == \"SQLSecurityAuditEvents\"\r\n| extend ResourceId = coalesce(_ResourceId, ResourceId),\r\n    ServerName = coalesce(server_instance_name_s, LogicalServerName_s),\r\n    DatabaseName = database_name_s,\r\n    Actor = coalesce(server_principal_name_s, session_server_principal_name_s),\r\n    ClientIP = client_ip_s,\r\n    ApplicationName = application_name_s,\r\n    ClientHost = host_name_s,\r\n    AuditAction = action_name_s,\r\n    AuditSuccess = succeeded_s,\r\n    Statement = statement_s,\r\n    ConnectionId = tostring(connection_id_g),\r\n    TargetAccount = coalesce(target_server_principal_name_s, target_database_principal_name_s),\r\n    TargetRole = \"\",\r\n    TargetObject = \"\",\r\n    Details = additional_information_s\r\n| extend IPAddress = iff(isnotnull(parse_ipv4(ClientIP)) or isnotempty(parse_ipv6(ClientIP)), ClientIP, \"\")\n| where AuditSuccess =~ \"true\"\r\n| extend ParsedRole = DecodeIdentifier(extract(strcat(@\"(?i)\\bALTER\\s+ROLE\\s+(\", Identifier, @\")\\s+DROP\\s+MEMBER\\s+(\", Identifier, \")\"), 1, Statement)),\r\n    ParsedMember = DecodeIdentifier(extract(strcat(@\"(?i)\\bALTER\\s+ROLE\\s+(\", Identifier, @\")\\s+DROP\\s+MEMBER\\s+(\", Identifier, \")\"), 2, Statement))\r\n| extend LegacyCall = extract(@\"(?is)\\bsp_droprolemember\\s+(.+?)(?:;|$)\", 1, Statement)\r\n| extend LegacyFirst = extract(@\"(?is)^\\s*(?:@\\w+\\s*=\\s*)?N?'((?:[^']|'')*)'\", 1, LegacyCall),\r\n    LegacySecond = extract(@\"(?is)^\\s*(?:@\\w+\\s*=\\s*)?N?'(?:[^']|'')*'\\s*,\\s*(?:@\\w+\\s*=\\s*)?N?'((?:[^']|'')*)'\", 1, LegacyCall)\r\n| extend LegacyRole = replace_string(LegacyFirst, \"''\", \"'\"),\r\n    LegacyMember = replace_string(LegacySecond, \"''\", \"'\")\r\n| extend TargetRole = coalesce(ParsedRole, LegacyRole),\r\n    TargetAccount = coalesce(TargetAccount, ParsedMember, LegacyMember)\r\n| where isnotempty(TargetRole)\n| project TimeGenerated, ResourceId, ServerName, DatabaseName, Actor, ClientIP, IPAddress,\r\n    ApplicationName, ClientHost, AuditAction, AuditSuccess, Statement, ConnectionId,\r\n    TargetAccount, TargetRole, TargetObject, Details",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Impact"
+        ],
+        "techniques": [
+          "T1531"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "groupingConfiguration": {
+            "reopenClosedIncident": false,
+            "enabled": true,
+            "matchingMethod": "Selected",
+            "groupByAlertDetails": [
+              "DisplayName"
+            ],
+            "lookbackDuration": "PT1H",
+            "groupByCustomDetails": [
+              "ResourceId"
+            ],
+            "groupByEntities": []
+          },
+          "createIncident": true
+        },
+        "entityMappings": [
+          {
+            "fieldMappings": [
+              {
+                "identifier": "ResourceId",
+                "columnName": "ResourceId"
+              }
+            ],
+            "entityType": "AzureResource"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "Actor"
+              }
+            ],
+            "entityType": "Account"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IPAddress"
+              }
+            ],
+            "entityType": "IP"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "TargetAccount"
+              }
+            ],
+            "entityType": "Account"
+          }
+        ],
+        "customDetails": {
+          "ResourceId": "ResourceId",
+          "ServerName": "ServerName",
+          "DatabaseName": "DatabaseName",
+          "Actor": "Actor",
+          "RawClientIP": "ClientIP",
+          "AuditAction": "AuditAction",
+          "AuditSuccess": "AuditSuccess",
+          "ConnectionId": "ConnectionId",
+          "TargetAccount": "TargetAccount",
+          "TargetRole": "TargetRole"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/739531a9-91b8-4b87-a169-000000000013')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL MI - Member removed from securityadmin",
+        "description": "Includes ALTER SERVER ROLE and legacy sp_dropsrvrolemember. Authorized privilege cleanup is a likely benign cause. Also overlaps the general server-role removal rule. Prerequisites: SERVER_ROLE_MEMBER_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement. Source: https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/UserRemovedFromSecurityAdminRole.kql. All rules import disabled. Review audit coverage, source field quality, thresholds, and maintenance allowlists before enabling. Audit succeeded=true is a reported audit outcome, not independent verification that a transaction committed. Statement-based matching is heuristic and can miss dynamic SQL, comments between tokens, or multiple objects; inspect native audit context. Raw SQL may contain sensitive data; the query retains it for investigation but does not copy it into custom details.",
+        "severity": "Medium",
+        "enabled": false,
+        "query": "let Identifier = @\"(?:\\[(?:[^\\]]|\\]\\])+\\]|\\x22(?:[^\\x22]|\\x22\\x22)+\\x22|[A-Za-z_#@][A-Za-z0-9_@$#.-]*)\";\r\nlet DecodeIdentifier = (token:string) {\r\n    case(\r\n        token startswith \"[\" and token endswith \"]\", replace_string(substring(token, 1, strlen(token) - 2), \"]]\", \"]\"),\r\n        token startswith '\"' and token endswith '\"', replace_string(substring(token, 1, strlen(token) - 2), '\"\"', '\"'),\r\n        token)\r\n};\r\nAzureDiagnostics\r\n| where TimeGenerated >= ago(5m)\r\n| where ResourceProvider =~ \"MICROSOFT.SQL\" and ResourceType =~ \"MANAGEDINSTANCES\"\r\n| where Category == \"SQLSecurityAuditEvents\"\r\n| extend ResourceId = coalesce(_ResourceId, ResourceId),\r\n    ServerName = coalesce(server_instance_name_s, LogicalServerName_s),\r\n    DatabaseName = database_name_s,\r\n    Actor = coalesce(server_principal_name_s, session_server_principal_name_s),\r\n    ClientIP = client_ip_s,\r\n    ApplicationName = application_name_s,\r\n    ClientHost = host_name_s,\r\n    AuditAction = action_name_s,\r\n    AuditSuccess = succeeded_s,\r\n    Statement = statement_s,\r\n    ConnectionId = tostring(connection_id_g),\r\n    TargetAccount = coalesce(target_server_principal_name_s, target_database_principal_name_s),\r\n    TargetRole = \"\",\r\n    TargetObject = \"\",\r\n    Details = additional_information_s\r\n| extend IPAddress = iff(isnotnull(parse_ipv4(ClientIP)) or isnotempty(parse_ipv6(ClientIP)), ClientIP, \"\")\n| where AuditSuccess =~ \"true\"\r\n| extend ParsedRole = DecodeIdentifier(extract(strcat(@\"(?i)\\bALTER\\s+SERVER\\s+ROLE\\s+(\", Identifier, @\")\\s+DROP\\s+MEMBER\\s+(\", Identifier, \")\"), 1, Statement)),\r\n    ParsedMember = DecodeIdentifier(extract(strcat(@\"(?i)\\bALTER\\s+SERVER\\s+ROLE\\s+(\", Identifier, @\")\\s+DROP\\s+MEMBER\\s+(\", Identifier, \")\"), 2, Statement))\r\n| extend LegacyCall = extract(@\"(?is)\\bsp_dropsrvrolemember\\s+(.+?)(?:;|$)\", 1, Statement)\r\n| extend LegacyFirst = extract(@\"(?is)^\\s*(?:@\\w+\\s*=\\s*)?N?'((?:[^']|'')*)'\", 1, LegacyCall),\r\n    LegacySecond = extract(@\"(?is)^\\s*(?:@\\w+\\s*=\\s*)?N?'(?:[^']|'')*'\\s*,\\s*(?:@\\w+\\s*=\\s*)?N?'((?:[^']|'')*)'\", 1, LegacyCall)\r\n| extend LegacyMember = replace_string(LegacyFirst, \"''\", \"'\"),\r\n    LegacyRole = replace_string(LegacySecond, \"''\", \"'\")\r\n| extend TargetRole = coalesce(ParsedRole, LegacyRole),\r\n    TargetAccount = coalesce(TargetAccount, ParsedMember, LegacyMember)\r\n| where isnotempty(TargetRole)\r\n| where TargetRole =~ \"securityadmin\"\n| project TimeGenerated, ResourceId, ServerName, DatabaseName, Actor, ClientIP, IPAddress,\r\n    ApplicationName, ClientHost, AuditAction, AuditSuccess, Statement, ConnectionId,\r\n    TargetAccount, TargetRole, TargetObject, Details",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Impact"
+        ],
+        "techniques": [
+          "T1531"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "groupingConfiguration": {
+            "reopenClosedIncident": false,
+            "enabled": true,
+            "matchingMethod": "Selected",
+            "groupByAlertDetails": [
+              "DisplayName"
+            ],
+            "lookbackDuration": "PT1H",
+            "groupByCustomDetails": [
+              "ResourceId"
+            ],
+            "groupByEntities": []
+          },
+          "createIncident": true
+        },
+        "entityMappings": [
+          {
+            "fieldMappings": [
+              {
+                "identifier": "ResourceId",
+                "columnName": "ResourceId"
+              }
+            ],
+            "entityType": "AzureResource"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "Actor"
+              }
+            ],
+            "entityType": "Account"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IPAddress"
+              }
+            ],
+            "entityType": "IP"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "TargetAccount"
+              }
+            ],
+            "entityType": "Account"
+          }
+        ],
+        "customDetails": {
+          "ResourceId": "ResourceId",
+          "ServerName": "ServerName",
+          "DatabaseName": "DatabaseName",
+          "Actor": "Actor",
+          "RawClientIP": "ClientIP",
+          "AuditAction": "AuditAction",
+          "AuditSuccess": "AuditSuccess",
+          "ConnectionId": "ConnectionId",
+          "TargetAccount": "TargetAccount",
+          "TargetRole": "TargetRole"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2024-03-01",
+      "name": "[concat(parameters('workspace'), '/Microsoft.SecurityInsights/739531a9-91b8-4b87-a169-000000000014')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "SQL MI - Server role member removed",
+        "description": "Includes ALTER SERVER ROLE and legacy sp_dropsrvrolemember. Authorized privilege cleanup is a likely benign cause. Includes securityadmin removal and therefore overlaps that dedicated rule. Prerequisites: SERVER_ROLE_MEMBER_CHANGE_GROUP, or BATCH_COMPLETED_GROUP capturing the statement. Source: https://github.com/le0li9ht/Microsoft-Sentinel-Queries/blob/44de43909fee0564e2fb532bf09fe1c2cf4dd5ce/Azure%20SQL/UserRemovedFromServerRole.kql. All rules import disabled. Review audit coverage, source field quality, thresholds, and maintenance allowlists before enabling. Audit succeeded=true is a reported audit outcome, not independent verification that a transaction committed. Statement-based matching is heuristic and can miss dynamic SQL, comments between tokens, or multiple objects; inspect native audit context. Raw SQL may contain sensitive data; the query retains it for investigation but does not copy it into custom details.",
+        "severity": "Medium",
+        "enabled": false,
+        "query": "let Identifier = @\"(?:\\[(?:[^\\]]|\\]\\])+\\]|\\x22(?:[^\\x22]|\\x22\\x22)+\\x22|[A-Za-z_#@][A-Za-z0-9_@$#.-]*)\";\r\nlet DecodeIdentifier = (token:string) {\r\n    case(\r\n        token startswith \"[\" and token endswith \"]\", replace_string(substring(token, 1, strlen(token) - 2), \"]]\", \"]\"),\r\n        token startswith '\"' and token endswith '\"', replace_string(substring(token, 1, strlen(token) - 2), '\"\"', '\"'),\r\n        token)\r\n};\r\nAzureDiagnostics\r\n| where TimeGenerated >= ago(5m)\r\n| where ResourceProvider =~ \"MICROSOFT.SQL\" and ResourceType =~ \"MANAGEDINSTANCES\"\r\n| where Category == \"SQLSecurityAuditEvents\"\r\n| extend ResourceId = coalesce(_ResourceId, ResourceId),\r\n    ServerName = coalesce(server_instance_name_s, LogicalServerName_s),\r\n    DatabaseName = database_name_s,\r\n    Actor = coalesce(server_principal_name_s, session_server_principal_name_s),\r\n    ClientIP = client_ip_s,\r\n    ApplicationName = application_name_s,\r\n    ClientHost = host_name_s,\r\n    AuditAction = action_name_s,\r\n    AuditSuccess = succeeded_s,\r\n    Statement = statement_s,\r\n    ConnectionId = tostring(connection_id_g),\r\n    TargetAccount = coalesce(target_server_principal_name_s, target_database_principal_name_s),\r\n    TargetRole = \"\",\r\n    TargetObject = \"\",\r\n    Details = additional_information_s\r\n| extend IPAddress = iff(isnotnull(parse_ipv4(ClientIP)) or isnotempty(parse_ipv6(ClientIP)), ClientIP, \"\")\n| where AuditSuccess =~ \"true\"\r\n| extend ParsedRole = DecodeIdentifier(extract(strcat(@\"(?i)\\bALTER\\s+SERVER\\s+ROLE\\s+(\", Identifier, @\")\\s+DROP\\s+MEMBER\\s+(\", Identifier, \")\"), 1, Statement)),\r\n    ParsedMember = DecodeIdentifier(extract(strcat(@\"(?i)\\bALTER\\s+SERVER\\s+ROLE\\s+(\", Identifier, @\")\\s+DROP\\s+MEMBER\\s+(\", Identifier, \")\"), 2, Statement))\r\n| extend LegacyCall = extract(@\"(?is)\\bsp_dropsrvrolemember\\s+(.+?)(?:;|$)\", 1, Statement)\r\n| extend LegacyFirst = extract(@\"(?is)^\\s*(?:@\\w+\\s*=\\s*)?N?'((?:[^']|'')*)'\", 1, LegacyCall),\r\n    LegacySecond = extract(@\"(?is)^\\s*(?:@\\w+\\s*=\\s*)?N?'(?:[^']|'')*'\\s*,\\s*(?:@\\w+\\s*=\\s*)?N?'((?:[^']|'')*)'\", 1, LegacyCall)\r\n| extend LegacyMember = replace_string(LegacyFirst, \"''\", \"'\"),\r\n    LegacyRole = replace_string(LegacySecond, \"''\", \"'\")\r\n| extend TargetRole = coalesce(ParsedRole, LegacyRole),\r\n    TargetAccount = coalesce(TargetAccount, ParsedMember, LegacyMember)\r\n| where isnotempty(TargetRole)\n| project TimeGenerated, ResourceId, ServerName, DatabaseName, Actor, ClientIP, IPAddress,\r\n    ApplicationName, ClientHost, AuditAction, AuditSuccess, Statement, ConnectionId,\r\n    TargetAccount, TargetRole, TargetObject, Details",
+        "queryFrequency": "PT5M",
+        "queryPeriod": "PT5M",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "Impact"
+        ],
+        "techniques": [
+          "T1531"
+        ],
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "incidentConfiguration": {
+          "groupingConfiguration": {
+            "reopenClosedIncident": false,
+            "enabled": true,
+            "matchingMethod": "Selected",
+            "groupByAlertDetails": [
+              "DisplayName"
+            ],
+            "lookbackDuration": "PT1H",
+            "groupByCustomDetails": [
+              "ResourceId"
+            ],
+            "groupByEntities": []
+          },
+          "createIncident": true
+        },
+        "entityMappings": [
+          {
+            "fieldMappings": [
+              {
+                "identifier": "ResourceId",
+                "columnName": "ResourceId"
+              }
+            ],
+            "entityType": "AzureResource"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "Actor"
+              }
+            ],
+            "entityType": "Account"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "IPAddress"
+              }
+            ],
+            "entityType": "IP"
+          },
+          {
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "TargetAccount"
+              }
+            ],
+            "entityType": "Account"
+          }
+        ],
+        "customDetails": {
+          "ResourceId": "ResourceId",
+          "ServerName": "ServerName",
+          "DatabaseName": "DatabaseName",
+          "Actor": "Actor",
+          "RawClientIP": "ClientIP",
+          "AuditAction": "AuditAction",
+          "AuditSuccess": "AuditSuccess",
+          "ConnectionId": "ConnectionId",
+          "TargetAccount": "TargetAccount",
+          "TargetRole": "TargetRole"
+        }
+      }
+    }
+  ]
+}
